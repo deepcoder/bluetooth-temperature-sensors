@@ -22,12 +22,13 @@ gcc -o ble_sensor_mqtt_pub ble_sensor_mqtt_pub.c -lbluetooth  -l paho-mqtt3c
 
 To run:
 ```
-ble_sensor_mqtt_pub <bluetooth adapter> <scan type> <scan window> <scan interval>
+sudo ble_sensor_mqtt_pub <bluetooth adapter> <scan type> <scan window> <scan interval>
 
 bluetooth adapter = integer number of bluetooth devices, run hciconfig to see your adapters
 scan type = 0 for passive, 1 for active advertising scan, some BLE sensors only share data on type 4 response active advertising packets
 scan window = integer number that is multiplied by 0.625 to set advertising scanning window in milliseconds. Try 100 to start.
 scan interval = integer number that is multiplied by 0.625 to set advertising scanning interval in milliseconds. Try 1000 to start.
+BLE scanning requires root equivalent rights, therefor sudo is necessary.
  ```
  
 Example JSON published to MQTT topic:
