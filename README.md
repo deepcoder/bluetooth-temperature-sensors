@@ -110,6 +110,31 @@ Configuration file:
 
 see included configuration file, this sets MQTT server, MQTT base topic and details about each BLE sensor. Key info you need to have is MAC Address of each sensor and the device type of each.
 
+Example Home Assistant MQTT sensor configuration:
+```
+  - platform: mqtt
+    name: "BLE Temperature Reading Hourly Stats"
+    state_topic: "homeassistant/sensor/ble-temp/$SYS/hour-stats"
+    value_template: "{{ value_json.total_adv_packets }}"
+    unit_of_measurement: "Pkts"
+    json_attributes_topic: "homeassistant/sensor/ble-temp/$SYS/hour-stats"
+
+  - platform: mqtt
+    name: "Backyard ATC_MI Temperature"
+    state_topic: "homeassistant/sensor/ble-temp/A4:C1:38:DD:10:20"
+    value_template: "{{ value_json.temperature }}"
+    unit_of_measurement: "°F"
+    json_attributes_topic: "homeassistant/sensor/ble-temp/A4:C1:38:DD:10:20"
+
+  - platform: mqtt
+    name: "Refrigerator Govee Humidity"
+    state_topic: "homeassistant/sensor/ble-temp/3F:46:0D:31:70:28"
+    value_template: "{{ value_json.humidity }}"
+    unit_of_measurement: "%"
+    json_attributes_topic: "homeassistant/sensor/ble-temp/3F:46:0D:31:70:28"
+
+```
+
 Dumping raw advertising packets to console:
 
 If you add the MAC address of a BLE device to the configuration file and give it a type of '99', the program will display the raw type 0 and 4 advertising packet data to the console. Useful to help figure out the data format of a new temperature and humidity sensor.
