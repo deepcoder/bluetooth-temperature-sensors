@@ -24,7 +24,7 @@ To run:
 ```
 sudo ble_sensor_mqtt_pub <bluetooth adapter> <scan type> <scan window> <scan interval>
 
-bluetooth adapter = integer number of bluetooth devices, run hciconfig to see your adapters
+bluetooth adapter = integer number of bluetooth devices, run hciconfig to see your adapters, 1st adapter is 0, so hci1 is 0
 scan type = 0 for passive, 1 for active advertising scan, some BLE sensors only share data on type 4 response active advertising packets
 scan window = integer number that is multiplied by 0.625 to set advertising scanning window in milliseconds. Try 100 to start.
 scan interval = integer number that is multiplied by 0.625 to set advertising scanning interval in milliseconds. Try 1000 to start.
