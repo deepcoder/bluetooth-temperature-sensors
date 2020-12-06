@@ -11,14 +11,11 @@ This program decodes the bluetooth advertising packets for the following BLE tem
 //  6 = Govee H5074 (type 4 advertising packets)
 // 99 = Display raw type 0 and type 4 advertising packets for this BLE MAC address
 ```
-
-The program uses the bluetooth and mqtt client libraries, which may need to be installed to compile and possibly run the program.
+The program uses the bluetooth and mqtt client libraries, steps to image Raspberry Pi and install necessary libraries to compile program are show at bottom of this readme:
 
 To compile:
 
-```
 gcc -o ble_sensor_mqtt_pub ble_sensor_mqtt_pub.c -lbluetooth  -l paho-mqtt3c
-```
 
 To run:
 ```
@@ -206,4 +203,84 @@ mac address =  E0:12:1D:33:82:11  location = H5074 test unit device type = 99 ad
 ==>__________ad________________________mmmmmmmmmmmmtttthhbbzbzbccrr
 rssi         = -64
 =========
+```
+
+
+steps to set up raspberry pi as bluetooth sensor MQTT collector
+
+imaged with:
+2020-08-20-raspios-buster-armhf-full.img
+
+```
+sudo apt-get update
+sudo apt-get full-upgrade
+
+reboot
+uname -a
+Linux pi-ble-02 5.4.79-v7+ #1373 SMP Mon Nov 23 13:22:33 GMT 2020 armv7l GNU/Linux
+Pi Model 2B  V1.1
+Revision           : a21041
+SoC                : BCM2836
+RAM                : 1024Mb
+
+git clone https://github.com/deepcoder/bluetooth-temperature-sensors.git
+
+sudo apt-get install libbluetooth-dev
+
+git clone https://github.com/eclipse/paho.mqtt.c.git
+cd paho.mqtt.c/
+make
+sudo make install
+
+cd /home/pi/bluetooth-temperature-sensors
+gcc -o ble_sensor_mqtt_pub ble_sensor_mqtt_pub.c -lbluetooth  -l paho-mqtt3c
+
+pi@pi-ble-02:~/bluetooth-temperature-sensors $ lsusb
+Bus 001 Device 005: ID 0a5c:21e8 Broadcom Corp. BCM20702A0 Bluetooth 4.0
+
+pi@pi-ble-02:~/bluetooth-temperature-sensors $ hciconfig
+hci0:	Type: Primary  Bus: USB
+	BD Address: 00:02:72:DC:31:2F  ACL MTU: 1021:8  SCO MTU: 64:1
+	UP RUNNING
+	RX bytes:980 acl:0 sco:0 events:51 errors:0
+	TX bytes:2446 acl:0 sco:0 commands:51 errors:0
+
+pi@pi-ble-02:~/bluetooth-temperature-sensors $ sudo ./ble_sensor_mqtt_pub 0 1 100 1000
+ble_sensor_mqtt_pub v 2.11
+1 Bluetooth adapter(s) in system.
+Reading configuration file : ble_sensor_mqtt_pub.csv
+MQTT server : tcp://172.168.2.22:1883
+MQTT topic  : homeassistant/sensor/ble-temp/
+Header      |MAC Address      |Type|Location                      |
+Unit  :   0 |58:2D:34:3B:44:16|  99|MJ_HT_V1_LYWSDCGQ             |
+Total devices in configuration file : 1
+MQTT client name : ble_sensor_mqtt_pub-2F:31:FC:13:02:00
+Bluetooth Adapter : 0 has MAC address : 2F:31:FC:13:02:00
+Advertising scan type (0=passive, 1=active): 1
+Advertising scan window   :  100, 62.5 ms
+Advertising scan interval : 1000, 625.0 ms
+Scanning....
+current hour (GMT) = 23
+last    hour (GMT) = 22
+
+=========
+Current local time and date: Sun Dec  6 15:30:29 2020
+mac address =  58:2D:34:3B:44:16  location = MJ_HT_V1_LYWSDCGQ device type = 99 advertising_packet_type = 000
+==>0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 4 4 5 5 5 5 5 5 5 5 5 5 6
+==>0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0
+==>                            0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1 2
+==>                            0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0
+==>043E230201000056723B342D5817020106131695FE5020AA015456723B342D58061002CD01B9
+==>__________ad________________________mmmmmmmmmmmmtttthhbbzbzbccrr
+rssi         = -71
+=========
+Current local time and date: Sun Dec  6 15:30:29 2020
+mac address =  58:2D:34:3B:44:16  location = MJ_HT_V1_LYWSDCGQ device type = 99 advertising_packet_type = 004
+==>0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 4 4 5 5 5 5 5 5 5 5 5 5 6
+==>0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0
+==>                            0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1 2
+==>                            0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0
+==>043E260201040056723B342D581A09094D4A5F48545F563105030F180A180916FFFFC3FB2C6D28B1B9
+==>__________ad________________________mmmmmmmmmmmmtttthhbbzbzbccrr
+rssi         = -71
 ```
