@@ -41,7 +41,7 @@ see included configuration file, this sets MQTT server, MQTT base topic and deta
 
 Dumping raw advertising packets to console:
 
-If you add the MAC address of a BLE device to the configuration file and give it a type of '99', the program will dislay the raw type 0 and 4 advertising packet data to the console. Useful to help figure out the data format of a new temperature and humidity sensor.
+If you add the MAC address of a BLE device to the configuration file and give it a type of '99', the program will display the raw type 0 and 4 advertising packet data to the console. Useful to help figure out the data format of a new temperature and humidity sensor.
 
 Example dump:
 
