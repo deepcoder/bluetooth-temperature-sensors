@@ -3,12 +3,13 @@ Read Bluetooth Advertising Packets from BLE temperature sensors and publish data
 
 This program decodes the bluetooth advertising packets for the following BLE temperature and humidity sensors:
 ```
-// 1 = Xiaomi LYWSD03MMC-ATC   https://github.com/atc1441/ATC_MiThermometer
-// 2 = Govee H5052
-// 3 = Govee H5072
-// 4 = Govee H5102
-// 5 = Govee H5075
-// 6 = Govee H5074
+//  1 = Xiaomi LYWSD03MMC-ATC   https://github.com/atc1441/ATC_MiThermometer
+//  2 = Govee H5052
+//  3 = Govee H5072
+//  4 = Govee H5102
+//  5 = Govee H5075
+//  6 = Govee H5074
+// 99 = Display raw type 0 and type 4 advertising packets for this BLE MAC address
 ```
 
 The program uses the bluetooth and mqtt client libraries, which may need to be installed to compile and possibly run the program.
@@ -37,3 +38,8 @@ Example JSON published to MQTT topic:
 Configuration file:
 
 see included configuration file, this sets MQTT server, MQTT base topic and details about each BLE sensor. Key info you need to have is MAC Address of each sensor and the device type of each.
+
+Dumping raw advertising packets to console:
+
+If you add the MAC address of a BLE device to the configuration file and give it a type of '99', the program will dislay the raw type 0 and 4 advertising packet data to the console. Useful to help figure out the data format of a new temperature and humidity sensor.
+
