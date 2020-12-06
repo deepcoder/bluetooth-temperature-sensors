@@ -108,7 +108,16 @@ Example:
 
 Configuration file:
 
-see included configuration file, this sets MQTT server, MQTT base topic and details about each BLE sensor. Key info you need to have is MAC Address of each sensor and the device type of each.
+Please note the program is very UNFORGIVING of format mistakes in this file! Lines must match format, the third line of column headers is required. See included configuration file, this sets MQTT server, MQTT base topic and details about each BLE sensor. Key info you need to have is MAC Address of each sensor and the device type of each.
+
+```
+tcp://172.148.5.11:1883
+homeassistant/sensor/ble-temp/
+mac address, type, location
+DD:C1:38:70:0C:24, 1, LYWSD03MMC Living Room
+DD:C1:38:AC:28:A2, 1, LYWSD03MMC Shared Bathroom
+
+```
 
 Example Home Assistant MQTT sensor configuration:
 ```
