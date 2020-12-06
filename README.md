@@ -4,11 +4,11 @@ Read Bluetooth Advertising Packets from BLE temperature sensors and publish data
 This program decodes the bluetooth advertising packets for the following BLE temperature and humidity sensors:
 ```
 //  1 = Xiaomi LYWSD03MMC-ATC   https://github.com/atc1441/ATC_MiThermometer
-//  2 = Govee H5052
+//  2 = Govee H5052 (type 4 advertising packets)
 //  3 = Govee H5072
 //  4 = Govee H5102
 //  5 = Govee H5075
-//  6 = Govee H5074
+//  6 = Govee H5074 (type 4 advertising packets)
 // 99 = Display raw type 0 and type 4 advertising packets for this BLE MAC address
 ```
 
