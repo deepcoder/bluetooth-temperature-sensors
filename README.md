@@ -32,6 +32,10 @@ scan interval = integer number that is multiplied by 0.625 to set advertising sc
  
 Example JSON published to MQTT topic:
 ```
+topic:
+homeassistant/sensor/ble-temp/A4:C1:38:22:13:D0
+
+payload:
 {"timestamp":"20201206025836","mac-address":"A4:D4:38:25:BD:61","rssi":-69,"temperature":64.4,"units":"F","temperature-celsius":18.0,"humidity":44.0,"battery-pct":93,"sensor-name":"","location":"H5072 Kitchen","sensor-type":"3"}
 ```
 At the top of each hour the program will publish a count of the total number of advertising packets seen for each sensor in the prior hour to MQTT. This is useful to check the bluetooth frequency reception for each sensor as well as the quality and frequency of readings for each sensor type. The sub topic for this is:
