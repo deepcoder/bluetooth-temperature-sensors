@@ -33,3 +33,7 @@ Example JSON published to MQTT topic:
 ```
 {"timestamp":"20201206025836","mac-address":"A4:D4:38:25:BD:61","rssi":-69,"temperature":64.4,"units":"F","temperature-celsius":18.0,"humidity":44.0,"battery-pct":93,"sensor-name":"","location":"H5072 Kitchen","sensor-type":"3"}
 ```
+
+Configuration file:
+
+see included configuration file, this sets MQTT server, MQTT base topic and details about each BLE sensor. Key info you need to have is MAC Address of each sensor and the device type of each.
