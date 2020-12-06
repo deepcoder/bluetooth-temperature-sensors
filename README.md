@@ -28,7 +28,7 @@ bluetooth adapter = integer number of bluetooth devices, run hciconfig to see yo
 scan type = 0 for passive, 1 for active advertising scan, some BLE sensors only share data on type 4 response active advertising packets
 scan window = integer number that is multiplied by 0.625 to set advertising scanning window in milliseconds. Try 100 to start.
 scan interval = integer number that is multiplied by 0.625 to set advertising scanning interval in milliseconds. Try 1000 to start.
-BLE scanning requires root equivalent rights, therefor sudo is necessary.
+BLE scanning requires root equivalent rights, therefore sudo is necessary.
  ```
  
 Example JSON published to MQTT topic:
