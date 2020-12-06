@@ -43,3 +43,28 @@ Dumping raw advertising packets to console:
 
 If you add the MAC address of a BLE device to the configuration file and give it a type of '99', the program will dislay the raw type 0 and 4 advertising packet data to the console. Useful to help figure out the data format of a new temperature and humidity sensor.
 
+Example dump:
+
+```
+=========
+Current local time and date: Sun Dec  6 13:55:55 2020
+mac address =  E0:12:1D:33:82:11  location = H5074 test unit device type = 99 advertising_packet_type = 000
+==>0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 4 4 5 5 5 5 5 5 5 5 5 5 6
+==>0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0
+==>                            0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1 2
+==>                            0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0
+==>043E29020100002780221D12E01D02010607030A18F5FE88EC1109476F7665655F48353037345F38303237BC
+==>__________ad________________________mmmmmmmmmmmmtttthhbbzbzbccrr
+rssi         = -68
+=========
+Current local time and date: Sun Dec  6 13:55:55 2020
+mac address =  E0:12:1D:33:82:11  location = H5074 test unit device type = 99 advertising_packet_type = 004
+==>0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 4 4 5 5 5 5 5 5 5 5 5 5 6
+==>0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0
+==>                            0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1 2
+==>                            0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0
+==>043E17020104002780221D12E00B0AFF88EC005806D0106402C0
+==>__________ad________________________mmmmmmmmmmmmtttthhbbzbzbccrr
+rssi         = -64
+=========
+```
