@@ -1,5 +1,5 @@
 # bluetooth-temperature-sensors
-Read Bluetooth Advertising Packets from BLE temperature sensors and publish data to MQTT
+Read Bluetooth Advertising Packets from BLE temperature sensors and publish data to MQTT. This C language program runs on Linux. I have successfully used it on Raspberry Pi OS, Ubuntu 18 and Ubuntu 20.
 
 This program decodes the bluetooth advertising packets for the following BLE temperature and humidity sensors:
 ```
@@ -144,6 +144,38 @@ Example Home Assistant MQTT sensor configuration:
     unit_of_measurement: "%"
     json_attributes_topic: "homeassistant/sensor/ble-temp/3F:46:0D:31:70:28"
 
+```
+
+Finding your sensor's MAC address:
+
+Considering how important this unique address is, especially when you have multiple units that all look identical, finding this number is a pain at times. Most of the sensors do NOT have the MAC address listed physically on them.
+
+Keep a list of your known sensors MAC address. I write the address with a Sharpie on my units.
+
+I do a two step process, you can find a name of the unit, sometimes with the last 2 or 3 digit pairs of the MAC address using a bluetooth low energy scanning tool like 'Light Blue', 'BLE Scanner' on iOS or Android. Or 'BlueSee' or 'Bluetooth Explorer' on Mac OS. Basically you are looking for the 'new' guy. Unplug the sensors battery, clear the scanning list. Start the scanner, plug the battery in to the sensor and watch for a new unit to appear. You are looking for this 'short' name that the unit broadcasts. Yes a pain.
+
+With this short name in hand, you will now use another tool to find the full MAC address. On the Linux machine where you will run the scanning program use the 'hcitool' BLE command as follows to find the full MAC address:
+
+examples:
+```
+sudo hcitool -i hci0 lescan | grep "MJ_HT_V1"
+sudo hcitool -i hci0 lescan | grep "80:27"
+sudo hcitool -i hci0 lescan | grep "ATC_71CC86"
+sudo hcitool -i hci0 lescan | grep "Govee_H5074_B0A7"
+```
+
+this will return a line with the full MAC address of the unit, similar to one of the ones shown below. Record this MAC address:
+
+```
+58:2D:34:3B:72:56 MJ_HT_V1
+A4:C1:38:71:CC:86 ATC_71CC86
+E0:12:1D:22:B0:A7 Govee_H5074_B0A7
+```
+
+if you run the program with the pipe to the grep command, you can see all the Bluetooth LE devices that are visible and advertising:
+
+```
+sudo hcitool -i hci0 lescan
 ```
 
 Dumping raw advertising packets to console:
