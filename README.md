@@ -114,8 +114,10 @@ Please note the program is very UNFORGIVING of format mistakes in this file! Lin
 tcp://172.148.5.11:1883
 homeassistant/sensor/ble-temp/
 mac address, type, location
-DD:C1:38:70:0C:24, 1, LYWSD03MMC Living Room
-DD:C1:38:AC:28:A2, 1, LYWSD03MMC Shared Bathroom
+DD:C1:38:70:0C:24,  1, Living Room
+DD:C1:38:AC:77:44,  3, Shared Bathroom
+DD:12:1D:22:80:77,  6, Attic
+DD:C1:38:AC:28:A2, 99, LYWSD03MMC test
 
 ```
 
