@@ -171,7 +171,7 @@ A4:C1:38:71:CC:86 ATC_71CC86
 E0:12:1D:22:B0:A7 Govee_H5074_B0A7
 ```
 
-if you run the program with the pipe to the grep command, you can see all the Bluetooth LE devices that are visible and advertising:
+if you run the program without the pipe to the grep command, you can see all the Bluetooth LE devices that are visible and advertising:
 
 ```
 sudo hcitool -i hci0 lescan
