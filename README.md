@@ -290,3 +290,9 @@ rssi         = -71
 There is not much that can be done to control the number of sensor reading taken and then collected for each of the BLE devices. These graphs show a comparison of some of the sensors over a 24 hour period. Some sensors take readings often, others much less often. The Govee 5074 appears to takes both temperature and humidity readings several times per minute, where as sensors like the Govee 5075 go multiple minutes between readings. It is difficult to gauge the specific sampling rate. Note that some sensors seems to sample temperature and humidity at different intervals, for example the Xiaomi LYWSD03MMC w/ custom firmware does this. In addition to sampling rate of the sensor, you have to account for how many of the BLE advertising packets you are collecting. If a sensor has a poor RF signal, even if it is collecting and transmitting samples at one rate, your BLE collecting device might only be capturing a subset of the packets. In addition to RF signal considerations, the BLE parameters for scan window and scan interval will effect the number of advertising packets and therefor the number of samples you receive. The table below shows that for the test sensors, with BLE scan window of 125 ms and scan interval of 312.5 ms, the collector Raspberry PI captured on the order of 300 to 500 advertising packets per hour. Again, it is difficult to deduce the number of samples per hour each sensor was taking.
 
 ![alt text](https://github.com/deepcoder/bluetooth-temperature-sensors/blob/main/sensor-temperature-24h.png?raw=true)
+
+![alt text](https://https://github.com/deepcoder/bluetooth-temperature-sensors/blob/main/sensor-humidity-24h.png?raw=true)
+
+![alt text](https://https://github.com/deepcoder/bluetooth-temperature-sensors/blob/main/sensor-readings-per-hour-24h.png?raw=true)
+
+
