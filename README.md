@@ -30,7 +30,7 @@ scan interval = integer number that is multiplied by 0.625 to set advertising sc
 BLE scanning requires root equivalent rights, therefore sudo is necessary.
  ```
  
-Example JSON published to MQTT topic:
+## Example JSON published to MQTT topic:
 ```
 topic:
 homeassistant/sensor/ble-temp/A4:C1:38:22:13:D0
@@ -105,7 +105,7 @@ Example:
 
 ```
 
-Configuration file:
+## Configuration file:
 
 Please note the program is very UNFORGIVING of format mistakes in this file! Lines must match format, the third line of column headers is required. See included configuration file, this sets MQTT server, MQTT base topic and details about each BLE sensor. Key info you need to have is MAC Address of each sensor and the device type of each.
 
@@ -120,7 +120,7 @@ DD:C1:38:AC:28:A2, 99, LYWSD03MMC test
 
 ```
 
-Example Home Assistant MQTT sensor configuration:
+## Example Home Assistant MQTT sensor configuration:
 ```
   - platform: mqtt
     name: "BLE Temperature Reading Hourly Stats"
@@ -145,7 +145,7 @@ Example Home Assistant MQTT sensor configuration:
 
 ```
 
-Finding your sensor's MAC address:
+## Finding your sensor's MAC address:
 
 Considering how important this unique address is, especially when you have multiple units that all look identical, finding this number is a pain at times. Most of the sensors do NOT have the MAC address listed physically on them.
 
@@ -177,7 +177,7 @@ if you run the program without the pipe to the grep command, you can see all the
 sudo hcitool -i hci0 lescan
 ```
 
-Dumping raw advertising packets to console:
+## Dumping raw advertising packets to console:
 
 If you add the MAC address of a BLE device to the configuration file and give it a type of '99', the program will display the raw type 0 and 4 advertising packet data to the console. Useful to help figure out the data format of a new temperature and humidity sensor.
 
@@ -208,7 +208,7 @@ rssi         = -64
 ```
 
 
-steps to set up raspberry pi as bluetooth sensor MQTT collector
+## steps to set up raspberry pi as bluetooth sensor MQTT collector
 
 imaged with:
 2020-08-20-raspios-buster-armhf-full.img
@@ -286,3 +286,6 @@ mac address =  58:2D:34:3B:44:16  location = MJ_HT_V1_LYWSDCGQ device type = 99 
 ==>__________ad________________________mmmmmmmmmmmmtttthhbbzbzbccrr
 rssi         = -71
 ```
+## Comparison of number of sensor reading
+There is not much that can be done to control the number of sensor reading taken and then collected for each of the BLE devices. These graphs show a comparison of some of the sensors over a 24 hour period. Some sensors take readings often, others much less often. The Govee 5074 appears to takes both temperature and humidity readings several times per minute, where as sensors like the Govee 5075 go multiple minutes between readings. It is difficult to gauge the specific sampling rate. Note that some sensors seems to sample temperature and humidity at different intervals, for example the Xiaomi LYWSD03MMC w/ custom firmware does this. In addition to sampling rate of the sensor, you have to account for how many of the BLE advertising packets you are collecting. If a sensor has a poor RF signal, even if it is collecting and transmitting samples at one rate, your BLE collecting device might only be capturing a subset of the packets. In addition to RF signal considerations, the BLE parameters for scan window and scan interval will effect the number of advertising packets and therefor the number of samples you receive. The table below shows that for the test sensors, with BLE scan window of 125 ms and scan interval of 312.5 ms, the collector Raspberry PI captured on the order of 300 to 500 advertising packets per hour. Again, it is difficult to deduce the number of samples per hour each sensor was taking.
+
