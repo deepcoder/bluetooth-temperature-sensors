@@ -291,8 +291,8 @@ There is not much that can be done to control the number of sensor reading taken
 
 ![alt text](https://github.com/deepcoder/bluetooth-temperature-sensors/blob/main/sensor-temperature-24h.png?raw=true)
 
-![alt text](https://https://github.com/deepcoder/bluetooth-temperature-sensors/blob/main/sensor-humidity-24h.png?raw=true)
+![alt text](https://github.com/deepcoder/bluetooth-temperature-sensors/blob/main/sensor-humidity-24h.png?raw=true)
 
-![alt text](https://https://github.com/deepcoder/bluetooth-temperature-sensors/blob/main/sensor-readings-per-hour-24h.png?raw=true)
+![alt text](https://github.com/deepcoder/bluetooth-temperature-sensors/blob/main/sensor-readings-per-hour-24h.png?raw=true)
 
 
