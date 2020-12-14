@@ -1,6 +1,6 @@
 // ble_sensor_mqtt_pub.c
-// gcc -o ble_sensor_mqtt_pub ble_sensor_mqtt_pub.c -lbluetooth  -l paho-mqtt3c
-// 202012051805       
+// gcc -o ble_sensor_mqtt_pub ble_sensor_mqtt_pub.c -l bluetooth  -l paho-mqtt3c
+// 202012131603       
 //
 // decode BLE temperature sensor temperature and humidity data from BLE advertising packets
 // and publish to MQTT
@@ -18,7 +18,7 @@
 //
 
 #define VERSION_MAJOR 2
-#define VERSION_MINOR 11
+#define VERSION_MINOR 12
 // why is it so hard to get the base name of the program withOUT the .c extension!!!!!!!
 
 #define PROGRAM_NAME "ble_sensor_mqtt_pub"
@@ -64,6 +64,11 @@
 // A general information message.
 // LOG_DEBUG
 // A message useful for debugging programs.
+
+int logging_level = LOG_INFO;
+// int logging_level = LOG_ERR;
+// int logging_level = LOG_DEBUG;
+
 
 #define RSYSLOG_ADDRESS "192.168.2.5"
 #define LOGMESSAGESIZE 512
@@ -900,22 +905,21 @@ int main(int argc, char *argv[])
                                 int ad_length; // length of ADV_IND packet type
                                 int ad_type; // attribute of ADV_IND packet type
 
+                                int8_t rssi_int = adv_info->data[adv_info->length];
 
-                                fprintf(stdout, "=========\n");
-
-                                fprintf(stdout, "Current local time and date: %s", asctime (time_packet_received) );
-                                fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, device_units_location[mac_index], device_units_type[mac_index]);
-
-                                fprintf(stdout, "advertising_packet_type = %03d\n", advertising_packet_type);
+                                if (logging_level == LOG_DEBUG)
+                                {
+                                    fprintf(stdout, "=========\n");
+                                    fprintf(stdout, "Current local time and date: %s", asctime (time_packet_received) );
+                                    fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, device_units_location[mac_index], device_units_type[mac_index]);
+                                    fprintf(stdout, "advertising_packet_type = %03d\n", advertising_packet_type);
+                                    fprintf(stdout, "rssi         = %03d\n", rssi_int);
+                                }
 
                                 // length of packet and subpacket
 
                                 // printf("full packet length      = %3d %02X\n", bluetooth_adv_packet_length, bluetooth_adv_packet_length);
                                 // printf("sub packet length       = %3d %02X\n", adv_info->length, adv_info->length);
-
-                                int8_t rssi_int = adv_info->data[adv_info->length];
-
-                                fprintf(stdout, "rssi         = %03d\n", rssi_int);
 
                                 ad_length = (unsigned int)adv_info->data[0];
                                 // printf("ADV_IND AD Data Length  = %3d %02X\n", ad_length, ad_length);
@@ -924,23 +928,26 @@ int main(int argc, char *argv[])
 
                                 int16_t temperature_int = (adv_info->data[10] << 8) | adv_info->data[11];
                                 double temperature_celsius = (double)temperature_int / 10.0;
-                                fprintf(stdout, "temp c       =  %.1f\n", temperature_celsius);
 
                                 double temperature_fahrenheit = temperature_celsius * 9.0/5.0 + 32.0;
-                                fprintf(stdout, "temp f       =  %.1f\n", temperature_fahrenheit);
 
                                 uint8_t humidity_int = adv_info->data[12];
-                                fprintf(stdout, "humidity pct = %3d\n", humidity_int);
 
                                 uint8_t battery_pct_int = adv_info->data[13];
-                                fprintf(stdout, "battery pct  = %3d\n", battery_pct_int);
 
                                 uint16_t battery_mv_int = (adv_info->data[14] << 8) | adv_info->data[15];
-                                fprintf(stdout, "battery mv   =  %4d\n", battery_mv_int);
 
                                 uint8_t frame_int = adv_info->data[16];
-                                fprintf(stdout, "frame        =   %3d\n", frame_int);
 
+                                if (logging_level == LOG_DEBUG)
+                                {
+                                    fprintf(stdout, "temp c       =  %.1f\n", temperature_celsius);
+                                    fprintf(stdout, "temp f       =  %.1f\n", temperature_fahrenheit);
+                                    fprintf(stdout, "humidity pct = %3d\n", humidity_int);
+                                    fprintf(stdout, "battery pct  = %3d\n", battery_pct_int);
+                                    fprintf(stdout, "battery mv   =  %4d\n", battery_mv_int);
+                                    fprintf(stdout, "frame        =   %3d\n", frame_int);
+                                }
 
                                 // count the number of advertising packets we get from each unit
 
@@ -1019,17 +1026,25 @@ int main(int argc, char *argv[])
                                 int ad_length; // length of ADV_IND packet type
                                 int ad_type; // attribute of ADV_IND packet type
 
-                                fprintf(stdout, "=========\n");
-                                fprintf(stdout, "Current local time and date: %s", asctime (time_packet_received) );
-                                fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, device_units_location[mac_index], device_units_type[mac_index]);
-
-                                fprintf(stdout, "advertising_packet_type = %03d\n", advertising_packet_type);
-
-                                sensor_data_start = 5;
-
                                 // get rssi
                                 int rssi_int = (signed char) (int8_t)adv_info->data[adv_info->length];
-                                fprintf(stdout, "rssi         = %03d\n", rssi_int);
+
+                                if (logging_level == LOG_DEBUG)
+                                {
+                                    fprintf(stdout, "=========\n");
+                                    fprintf(stdout, "Current local time and date: %s", asctime (time_packet_received) );
+                                    fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, device_units_location[mac_index], device_units_type[mac_index]);
+                                    fprintf(stdout, "advertising_packet_type = %03d\n", advertising_packet_type);
+                                    fprintf(stdout, "rssi         = %03d\n", rssi_int);
+                                }
+
+//                                 fprintf(stdout, "=========\n");
+//                                 fprintf(stdout, "Current local time and date: %s", asctime (time_packet_received) );
+//                                 fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, device_units_location[mac_index], device_units_type[mac_index]);
+// 
+//                                 fprintf(stdout, "advertising_packet_type = %03d\n", advertising_packet_type);
+
+                                sensor_data_start = 5;
 
                                 // get the lsb msb byte pairs for temperature and humidity and convert them to an integer value (in 100's)
                                 // temperature is a signed 16 bit integer to allow for temperatures below and above 0 degrees celsius
@@ -1043,15 +1058,18 @@ int main(int argc, char *argv[])
                                 temperature_fahrenheit = (temperature_int / 100.0) * 9.0/5.0 + 32.0;
                                 temperature_celsius = (temperature_int / 100.0);
 
-                                fprintf(stdout, "temp c       =  %.1f\n", temperature_celsius);
-                                fprintf(stdout, "temp f       =  %.1f\n", temperature_fahrenheit);
-
                                 double humidity = humidity_int / 100.0;
-                                fprintf(stdout, "humidity pct =  %.1f\n", humidity);
 
                                 // get battery level percentage
                                 int battery_precentage_int = (signed char) adv_info->data[sensor_data_start + 4];
-                                fprintf(stdout, "battery pct  = %3d\n", battery_precentage_int);
+
+                                if (logging_level == LOG_DEBUG)
+                                {
+                                    fprintf(stdout, "temp c       =  %.1f\n", temperature_celsius);
+                                    fprintf(stdout, "temp f       =  %.1f\n", temperature_fahrenheit);
+                                    fprintf(stdout, "humidity pct =  %.1f\n", humidity);
+                                    fprintf(stdout, "battery pct  = %3d\n", battery_precentage_int);
+                                }
 
                                 // count the number of advertising packets we get from each unit
 
@@ -1127,17 +1145,25 @@ int main(int argc, char *argv[])
                                 int ad_length; // length of ADV_IND packet type
                                 int ad_type; // attribute of ADV_IND packet type
 
-                                fprintf(stdout, "=========\n");
-                                fprintf(stdout, "Current local time and date: %s", asctime (time_packet_received) );
-                                fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, device_units_location[mac_index], device_units_type[mac_index]);
-
-                                fprintf(stdout, "advertising_packet_type = %03d\n", advertising_packet_type);
-
-                                sensor_data_start = 26;
-
                                 // get rssi
                                 int rssi_int = (signed char) (int8_t)adv_info->data[adv_info->length];
-                                fprintf(stdout, "rssi         = %03d\n", rssi_int);
+
+                                if (logging_level == LOG_DEBUG)
+                                {
+                                    fprintf(stdout, "=========\n");
+                                    fprintf(stdout, "Current local time and date: %s", asctime (time_packet_received) );
+                                    fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, device_units_location[mac_index], device_units_type[mac_index]);
+                                    fprintf(stdout, "advertising_packet_type = %03d\n", advertising_packet_type);
+                                    fprintf(stdout, "rssi         = %03d\n", rssi_int);
+                                }
+
+//                                 fprintf(stdout, "=========\n");
+//                                 fprintf(stdout, "Current local time and date: %s", asctime (time_packet_received) );
+//                                 fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, device_units_location[mac_index], device_units_type[mac_index]);
+// 
+//                                 fprintf(stdout, "advertising_packet_type = %03d\n", advertising_packet_type);
+
+                                sensor_data_start = 26;
 
                                 int below_32;
                                 int msb;
@@ -1180,14 +1206,16 @@ int main(int argc, char *argv[])
 
                                 double humidity = humidity_int;
 
-                                fprintf(stdout, "temp c       =  %.1f\n", temperature_celsius);
-                                fprintf(stdout, "temp f       =  %.1f\n", temperature_fahrenheit);
-
-                                fprintf(stdout, "humidity pct =  %.1f\n", humidity);
-
                                 // get battery level percentage
                                 int battery_precentage_int = (signed char) adv_info->data[sensor_data_start + 3];
-                                fprintf(stdout, "battery pct  = %3d\n", battery_precentage_int);
+
+                                if (logging_level == LOG_DEBUG)
+                                {
+                                    fprintf(stdout, "temp c       =  %.1f\n", temperature_celsius);
+                                    fprintf(stdout, "temp f       =  %.1f\n", temperature_fahrenheit);
+                                    fprintf(stdout, "humidity pct =  %.1f\n", humidity);
+                                    fprintf(stdout, "battery pct  = %3d\n",   battery_precentage_int);
+                                }
 
                                 // count the number of advertising packets we get from each unit
 
@@ -1266,17 +1294,25 @@ int main(int argc, char *argv[])
                                 int ad_length; // length of ADV_IND packet type
                                 int ad_type; // attribute of ADV_IND packet type
 
-                                fprintf(stdout, "=========\n");
-                                fprintf(stdout, "Current local time and date: %s", asctime (time_packet_received) );
-                                fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, device_units_location[mac_index], device_units_type[mac_index]);
-
-                                fprintf(stdout, "advertising_packet_type = %03d\n", advertising_packet_type);
-
-                                sensor_data_start = 27;
-
                                 // get rssi
                                 int rssi_int = (signed char) (int8_t)adv_info->data[adv_info->length];
-                                fprintf(stdout, "rssi         = %03d\n", rssi_int);
+
+                                if (logging_level == LOG_DEBUG)
+                                {
+                                    fprintf(stdout, "=========\n");
+                                    fprintf(stdout, "Current local time and date: %s", asctime (time_packet_received) );
+                                    fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, device_units_location[mac_index], device_units_type[mac_index]);
+                                    fprintf(stdout, "advertising_packet_type = %03d\n", advertising_packet_type);
+                                    fprintf(stdout, "rssi         = %03d\n", rssi_int);
+                                }
+
+//                                 fprintf(stdout, "=========\n");
+//                                 fprintf(stdout, "Current local time and date: %s", asctime (time_packet_received) );
+//                                 fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, device_units_location[mac_index], device_units_type[mac_index]);
+// 
+//                                 fprintf(stdout, "advertising_packet_type = %03d\n", advertising_packet_type);
+
+                                sensor_data_start = 27;
 
                                 int below_32;
                                 int msb;
@@ -1318,15 +1354,16 @@ int main(int argc, char *argv[])
                                 temperature_celsius = temperature_int;
 
                                 double humidity = humidity_int;
-
-                                fprintf(stdout, "temp c       =  %.1f\n", temperature_celsius);
-                                fprintf(stdout, "temp f       =  %.1f\n", temperature_fahrenheit);
-
-                                fprintf(stdout, "humidity pct =  %.1f\n", humidity);
-
                                 // get battery level percentage
                                 int battery_precentage_int = (signed char) adv_info->data[sensor_data_start + 3];
-                                fprintf(stdout, "battery pct  = %3d\n", battery_precentage_int);
+
+                                if (logging_level == LOG_DEBUG)
+                                {
+                                    fprintf(stdout, "temp c       =  %.1f\n", temperature_celsius);
+                                    fprintf(stdout, "temp f       =  %.1f\n", temperature_fahrenheit);
+                                    fprintf(stdout, "humidity pct =  %.1f\n", humidity);
+                                    fprintf(stdout, "battery pct  = %3d\n", battery_precentage_int);
+                                }
 
                                 // count the number of advertising packets we get from each unit
 
@@ -1406,17 +1443,25 @@ int main(int argc, char *argv[])
                                 int ad_length; // length of ADV_IND packet type
                                 int ad_type; // attribute of ADV_IND packet type
 
-                                fprintf(stdout, "=========\n");
-                                fprintf(stdout, "Current local time and date: %s", asctime (time_packet_received) );
-                                fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, device_units_location[mac_index], device_units_type[mac_index]);
-
-                                fprintf(stdout, "advertising_packet_type = %03d\n", advertising_packet_type);
-
-                                sensor_data_start = 26;
-
                                 // get rssi
                                 int rssi_int = (signed char) (int8_t)adv_info->data[adv_info->length];
-                                fprintf(stdout, "rssi         = %03d\n", rssi_int);
+
+                                if (logging_level == LOG_DEBUG)
+                                {
+                                    fprintf(stdout, "=========\n");
+                                    fprintf(stdout, "Current local time and date: %s", asctime (time_packet_received) );
+                                    fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, device_units_location[mac_index], device_units_type[mac_index]);
+                                    fprintf(stdout, "advertising_packet_type = %03d\n", advertising_packet_type);
+                                    fprintf(stdout, "rssi         = %03d\n", rssi_int);
+                                }
+
+//                                 fprintf(stdout, "=========\n");
+//                                 fprintf(stdout, "Current local time and date: %s", asctime (time_packet_received) );
+//                                 fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, device_units_location[mac_index], device_units_type[mac_index]);
+// 
+//                                 fprintf(stdout, "advertising_packet_type = %03d\n", advertising_packet_type);
+
+                                sensor_data_start = 26;
 
                                 int below_32;
                                 int msb;
@@ -1458,15 +1503,16 @@ int main(int argc, char *argv[])
                                 temperature_celsius = temperature_int;
 
                                 double humidity = humidity_int;
-
-                                fprintf(stdout, "temp c       =  %.1f\n", temperature_celsius);
-                                fprintf(stdout, "temp f       =  %.1f\n", temperature_fahrenheit);
-
-                                fprintf(stdout, "humidity pct =  %.1f\n", humidity);
-
                                 // get battery level percentage
                                 int battery_precentage_int = (signed char) adv_info->data[sensor_data_start + 3];
-                                fprintf(stdout, "battery pct  = %3d\n", battery_precentage_int);
+
+                                if (logging_level == LOG_DEBUG)
+                                {
+                                    fprintf(stdout, "temp c       =  %.1f\n", temperature_celsius);
+                                    fprintf(stdout, "temp f       =  %.1f\n", temperature_fahrenheit);
+                                    fprintf(stdout, "humidity pct =  %.1f\n", humidity);
+                                    fprintf(stdout, "battery pct  = %3d\n", battery_precentage_int);
+                                }
 
                                 // count the number of advertising packets we get from each unit
 
@@ -1551,23 +1597,31 @@ int main(int argc, char *argv[])
                                 int ad_length; // length of ADV_IND packet type
                                 int ad_type; // attribute of ADV_IND packet type
 
+                                // get rssi
+                                int rssi_int = (signed char) (int8_t)adv_info->data[adv_info->length];
+
                                 // this device sends sensor data only on this type of scan response advertising packet
 
                                 if ((int8_t)adv_info->data[0] == 0x0a)
                                 {
 
+                                if (logging_level == LOG_DEBUG)
+                                {
                                     fprintf(stdout, "=========\n");
                                     fprintf(stdout, "Current local time and date: %s", asctime (time_packet_received) );
                                     fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, device_units_location[mac_index], device_units_type[mac_index]);
-
                                     fprintf(stdout, "advertising_packet_type = %03d\n", advertising_packet_type);
+                                    fprintf(stdout, "rssi         = %03d\n", rssi_int);
+                                }
+
+//                                     fprintf(stdout, "=========\n");
+//                                     fprintf(stdout, "Current local time and date: %s", asctime (time_packet_received) );
+//                                     fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, device_units_location[mac_index], device_units_type[mac_index]);
+// 
+//                                     fprintf(stdout, "advertising_packet_type = %03d\n", advertising_packet_type);
 
                                     sensor_data_start = 5;
                                     
-                                    // get rssi
-                                    int rssi_int = (signed char) (int8_t)adv_info->data[adv_info->length];
-                                    fprintf(stdout, "rssi         = %03d\n", rssi_int);
-
                                     // get the lsb msb byte pairs for temperature and humidity and convert them to an integer value (in 100's)
                                     // temperature is a signed 16 bit integer to allow for temperatures below and above 0 degrees celsius
                                     signed short int temperature_int = adv_info->data[sensor_data_start + 0] | adv_info->data[sensor_data_start + 1] << 8;
@@ -1580,15 +1634,18 @@ int main(int argc, char *argv[])
                                     temperature_fahrenheit = (temperature_int / 100.0) * 9.0/5.0 + 32.0;
                                     temperature_celsius = (temperature_int / 100.0);
 
-                                    fprintf(stdout, "temp c       =  %.1f\n", temperature_celsius);
-                                    fprintf(stdout, "temp f       =  %.1f\n", temperature_fahrenheit);
-
                                     double humidity = humidity_int / 100.0;
-                                    fprintf(stdout, "humidity pct =  %.1f\n", humidity);
 
                                     // get battery level percentage
                                     int battery_precentage_int = (signed char) adv_info->data[sensor_data_start + 4];
-                                    fprintf(stdout, "battery pct  = %3d\n", battery_precentage_int);
+
+                                    if (logging_level == LOG_DEBUG)
+                                    {
+                                        fprintf(stdout, "temp c       =  %.1f\n", temperature_celsius);
+                                        fprintf(stdout, "temp f       =  %.1f\n", temperature_fahrenheit);
+                                        fprintf(stdout, "humidity pct =  %.1f\n", humidity);
+                                        fprintf(stdout, "battery pct  = %3d\n", battery_precentage_int);
+                                    }
 
                                     // count the number of advertising packets we get from each unit
 
@@ -1663,29 +1720,36 @@ int main(int argc, char *argv[])
                                 int ad_length; // length of ADV_IND packet type
                                 int ad_type; // attribute of ADV_IND packet type
 
-                                fprintf(stdout, "=========\n");
-                                fprintf(stdout, "Current local time and date: %s", asctime (time_packet_received) );
-                                fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, device_units_location[mac_index], device_units_type[mac_index]);
-
-                                fprintf(stdout, "advertising_packet_type = %03d\n", advertising_packet_type);
-
                                 // counter for printing
                                 int n;
-                                // print whole packet
-                                printf("==>0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 4 4 5 5 5 5 5 5 5 5 5 5 6 \n");
-                                printf("==>0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 \n");
-                                printf("==>                            0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1 2\n");
-                                printf("==>                            0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 \n");
-                                printf("==>");
-                                for(n=0; n < bluetooth_adv_packet_length; n++)
-                                    printf("%02X",(unsigned char)ble_adv_buf[n]);
-                                printf("\n");
-                                printf("==>__________ad________________________mmmmmmmmmmmmtttthhbbzbzbccrr\n");
 
                                 // get rssi
                                 int rssi_int = (signed char) (int8_t)adv_info->data[adv_info->length];
-                                fprintf(stdout, "rssi         = %03d\n", rssi_int);
 
+                                if (logging_level == LOG_DEBUG)
+                                {
+                                    fprintf(stdout, "=========\n");
+                                    fprintf(stdout, "Current local time and date: %s", asctime (time_packet_received) );
+                                    fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, device_units_location[mac_index], device_units_type[mac_index]);
+                                    fprintf(stdout, "advertising_packet_type = %03d\n", advertising_packet_type);
+                                    // print whole packet
+                                    printf("==>0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 4 4 5 5 5 5 5 5 5 5 5 5 6 \n");
+                                    printf("==>0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 \n");
+                                    printf("==>                            0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1 2\n");
+                                    printf("==>                            0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 \n");
+                                    printf("==>");
+                                    for(n=0; n < bluetooth_adv_packet_length; n++)
+                                        printf("%02X",(unsigned char)ble_adv_buf[n]);
+                                    printf("\n");
+                                    printf("==>__________ad________________________mmmmmmmmmmmmtttthhbbzbzbccrr\n");
+                                    fprintf(stdout, "rssi         = %03d\n", rssi_int);
+                                }
+
+//                                 fprintf(stdout, "=========\n");
+//                                 fprintf(stdout, "Current local time and date: %s", asctime (time_packet_received) );
+//                                 fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, device_units_location[mac_index], device_units_type[mac_index]);
+// 
+//                                 fprintf(stdout, "advertising_packet_type = %03d\n", advertising_packet_type);
                             }
 
                             if (advertising_packet_type == 4)
@@ -1693,30 +1757,30 @@ int main(int argc, char *argv[])
 
                                 int ad_length; // length of ADV_IND packet type
                                 int ad_type; // attribute of ADV_IND packet type
-
-                                fprintf(stdout, "=========\n");
-                                fprintf(stdout, "Current local time and date: %s", asctime (time_packet_received) );
-                                fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, device_units_location[mac_index], device_units_type[mac_index]);
-
-                                fprintf(stdout, "advertising_packet_type = %03d\n", advertising_packet_type);
-
                                 // counter for printing
                                 int n;
-                                // print whole packet
-                                printf("==>0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 4 4 5 5 5 5 5 5 5 5 5 5 6 \n");
-                                printf("==>0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 \n");
-                                printf("==>                            0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1 2\n");
-                                printf("==>                            0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 \n");
-                                printf("==>");
-                                for(n=0; n < bluetooth_adv_packet_length; n++)
-                                    printf("%02X",(unsigned char)ble_adv_buf[n]);
-                                printf("\n");
-                                printf("==>__________ad________________________mmmmmmmmmmmmtttthhbbzbzbccrr\n");
 
                                 // get rssi
                                 int rssi_int = (signed char) (int8_t)adv_info->data[adv_info->length];
-                                fprintf(stdout, "rssi         = %03d\n", rssi_int);
 
+                                if (logging_level == LOG_DEBUG)
+                                {
+                                    fprintf(stdout, "=========\n");
+                                    fprintf(stdout, "Current local time and date: %s", asctime (time_packet_received) );
+                                    fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, device_units_location[mac_index], device_units_type[mac_index]);
+                                    fprintf(stdout, "advertising_packet_type = %03d\n", advertising_packet_type);
+                                    // print whole packet
+                                    printf("==>0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 4 4 5 5 5 5 5 5 5 5 5 5 6 \n");
+                                    printf("==>0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 \n");
+                                    printf("==>                            0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1 2\n");
+                                    printf("==>                            0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 \n");
+                                    printf("==>");
+                                    for(n=0; n < bluetooth_adv_packet_length; n++)
+                                        printf("%02X",(unsigned char)ble_adv_buf[n]);
+                                    printf("\n");
+                                    printf("==>__________ad________________________mmmmmmmmmmmmtttthhbbzbzbccrr\n");
+                                    fprintf(stdout, "rssi         = %03d\n", rssi_int);
+                                }
                             }
                             fflush(stdout);
                         }
