@@ -1,0 +1,157 @@
+build rapsberry pi ble to mqtt
+202012161409
+
+
+sudo dd bs=1m if=2020-08-20-raspios-buster-armhf-full.img of=/dev/rdisk6 conv=sync
+
+touch /Volumes/boot/ssh
+
+vi /Volumes/boot/wpa_supplicant.conf
+ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
+update_config=1
+country=US
+
+network={
+    ssid="xxx"
+    psk="yyy"
+    key_mgmt=WPA-PSK
+}
+
+diskutil eject /dev/disk6
+
+boot the pi
+find on network
+
+sudo raspi-config
+# wait for network
+# consistent network names
+
+
+edit /etc/dhcpcd.conf
+interface eth0
+static ip_address=192.168.x.y/24
+static routers=192.168.x.x
+static domain_name_servers=1.1.1.1
+
+interface enxb827ebczzzzz
+static ip_address=192.168.x.y/24
+static routers=192.168.x.x
+static domain_name_servers=1.1.1.1
+
+removed /etc/wpa_supplicant.conf
+
+sudo apt-get update
+sudo apt-get full-upgrade
+reboot 
+sudo apt-get install tmux
+
+fix login warning:
+/etc/profile.d/sshpwd.sh
+/etc/xdg/lxsession/LXDE-pi/sshpwd.sh
+
+mkdir ~/.ssh
+cat .ssh/id_rsa.pub | ssh pi@192.168.x.y 'cat >> .ssh/authorized_keys'
+
+create .vimrc for pi and root
+
+sudo mkdir  /media/pi
+sudo mkdir  /media/pi/nas
+
+vi /home/pi/.NASCREDS
+
+user=xxx
+password=yyy
+
+in /etc/fstab
+
+//192.168.x.y/nas /media/pi/nas cifs credentials=/home/pi/.NASCREDS,uid=pi,gid=pi,vers=1.0,comment=x-systemd.automount 0 0
+
+# test it
+sudo mount -a
+
+mkdir ~/ble-sensors
+cd ~/ble-sensors
+git clone https://github.com/deepcoder/bluetooth-temperature-sensors.git
+sudo apt-get install libbluetooth-dev
+git clone https://github.com/eclipse/paho.mqtt.c.git
+cd paho.mqtt.c
+make
+sudo make install
+cd ..
+cd bluetooth-temperature-sensors
+gcc -o ble_sensor_mqtt_pub ble_sensor_mqtt_pub.c -lbluetooth  -l paho-mqtt3c
+cp ble_sensor_mqtt_pub ..
+cd ..
+create ble_sensor_mqtt_pub.csv
+create hack_ble.sh
+=====
+#!/bin/bash
+
+trap "echo Exited!; exit;" SIGINT SIGTERM
+
+if [ $EUID -ne 0 ]; then
+    echo "This script should be run as root." > /dev/stderr
+    exit 1
+fi
+
+while :
+do
+    echo 'Running ble_sensor_mqtt_pub'
+    date '+%Y%m%d%H%M%S'
+	echo "Press [CTRL+C] to stop.."
+    cd /home/pi/ble-sensors
+	/home/pi/ble-sensors/ble_sensor_mqtt_pub 0 1 200 500
+done
+=====
+chmod +x hack_ble.sh
+
+sudo vi /etc/rc.local
+=====
+#!/bin/bash
+
+########!/bin/sh -e
+#
+# rc.local
+#
+# This script is executed at the end of each multiuser runlevel.
+# Make sure that the script will "exit 0" on success or any other
+# value on error.
+#
+# In order to enable or disable this script just change the execution
+# bits.
+#
+# By default this script does nothing.
+
+# Print the IP address
+_IP=$(hostname -I) || true
+if [ "$_IP" ]; then
+  printf "My IP address is %s\n" "$_IP"
+fi
+
+# wait for networks to start
+
+STATE="error";
+
+while [  $STATE == "error" ]; do
+    #do a ping and check that its not a default message or change to grep for something else
+    STATE=$(ping -q -w 1 -c 1 `ip r | grep default | cut -d ' ' -f 3` > /dev/null && echo ok || echo error)
+
+    #sleep for 2 seconds and try again
+    sleep 2
+done
+
+su pi -c 'tmux new-session -d -s ble'
+su pi -c 'tmux send-keys sudo Space /home/pi/ble-sensors/hack_ble.sh C-m'
+
+
+exit 0
+=====
+hciconfig
+hci0:	Type: Primary  Bus: UART
+	BD Address: cc:bb:aa:zz:yy:xx  ACL MTU: 1021:8  SCO MTU: 64:1
+	UP RUNNING
+	RX bytes:1476 acl:0 sco:0 events:90 errors:0
+	TX bytes:3274 acl:0 sco:0 commands:90 errors:0
+
+tmux attach -t ble
+
