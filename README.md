@@ -227,6 +227,9 @@ RAM                : 1024Mb
 
 git clone https://github.com/deepcoder/bluetooth-temperature-sensors.git
 
+# install libssl-dev if not already installed
+sudo apt-get install libssl-dev
+
 sudo apt-get install libbluetooth-dev
 
 git clone https://github.com/eclipse/paho.mqtt.c.git
