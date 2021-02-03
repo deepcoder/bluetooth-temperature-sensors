@@ -1,6 +1,6 @@
 // ble_sensor_mqtt_pub.c
 // gcc -o ble_sensor_mqtt_pub ble_sensor_mqtt_pub.c -l bluetooth  -l paho-mqtt3c
-// 202012131603       
+// 202102030607       
 //
 // decode BLE temperature sensor temperature and humidity data from BLE advertising packets
 // and publish to MQTT
@@ -18,7 +18,7 @@
 //
 
 #define VERSION_MAJOR 2
-#define VERSION_MINOR 12
+#define VERSION_MINOR 13
 // why is it so hard to get the base name of the program withOUT the .c extension!!!!!!!
 
 #define PROGRAM_NAME "ble_sensor_mqtt_pub"
@@ -256,7 +256,7 @@ void connlost(void *context, char *cause)
 
     snprintf(log_message, LOGMESSAGESIZE, "%s v: %d.%d MQTT Server Connection lost", PROGRAM_NAME, VERSION_MAJOR, VERSION_MINOR);
     send_remote_syslog_message(LOG_ERR, RSYSLOG_ADDRESS, PROGRAM_NAME, log_message);
-    syslog (LOG_ERR, log_message);
+    syslog (LOG_ERR, "%s",log_message);
     fprintf(stderr, "MQTT Server Connection lost, cause: %s\n", cause);
     exit(1);
 }
@@ -344,7 +344,7 @@ int main(int argc, char *argv[])
 
         snprintf(log_message, LOGMESSAGESIZE, "%s v: %d.%d Couldn't enumerate HCI devices: %s", PROGRAM_NAME, VERSION_MAJOR, VERSION_MINOR, strerror(errno));
         send_remote_syslog_message(LOG_ERR, RSYSLOG_ADDRESS, PROGRAM_NAME, log_message);
-        syslog (LOG_ERR, log_message);
+        syslog (LOG_ERR, "%s",log_message);
         fprintf(stderr, "Couldn't enumerate HCI devices: %s", strerror(errno));
         exit(1);
     }
@@ -357,7 +357,7 @@ int main(int argc, char *argv[])
     {
         snprintf(log_message, LOGMESSAGESIZE, "%s v: %d.%d Start program with four arguments, the bluetooth adapter number, scan type (0=passive, 1=active), BLE scan Window (0 for default), BLE scan Interval (0 for default)\n", PROGRAM_NAME, VERSION_MAJOR, VERSION_MINOR);
         send_remote_syslog_message(LOG_ERR, RSYSLOG_ADDRESS, PROGRAM_NAME, log_message);
-        syslog (LOG_ERR, log_message);
+        syslog (LOG_ERR, "%s",log_message);
         fprintf(stderr, "Start program with four arguments, the bluetooth adapter number, scan type (0=passive, 1=active), BLE scan Window (0 for default), BLE scan Interval (0 for default)\n");
         exit(1);
     }
@@ -397,7 +397,7 @@ int main(int argc, char *argv[])
     {
         snprintf(log_message, LOGMESSAGESIZE, "%s v: %d.%d Enter bluetooth adapter number between 0 and %u !!\n", PROGRAM_NAME, VERSION_MAJOR, VERSION_MINOR, hci_devs_num - 1);
         send_remote_syslog_message(LOG_ERR, RSYSLOG_ADDRESS, PROGRAM_NAME, log_message);
-        syslog (LOG_ERR, log_message);
+        syslog (LOG_ERR, "%s",log_message);
         fprintf(stderr, "Enter bluetooth adapter number between 0 and %u !!\n", hci_devs_num - 1);
         exit(1);
     }
@@ -411,7 +411,7 @@ int main(int argc, char *argv[])
     openlog (PROGRAM_NAME, LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
     snprintf(log_message, LOGMESSAGESIZE, "%s v: %d.%d Starting.", PROGRAM_NAME, VERSION_MAJOR, VERSION_MINOR);
     send_remote_syslog_message(LOG_INFO, RSYSLOG_ADDRESS, PROGRAM_NAME, log_message);
-    syslog (LOG_INFO, log_message);
+    syslog (LOG_INFO, "%s",log_message);
 
     // maximum number of sensors
     #define MAXIMUM_UNITS 40
@@ -473,7 +473,7 @@ int main(int argc, char *argv[])
             {
                 snprintf(log_message, LOGMESSAGESIZE, "%s v: %d.%d Too many devices in configuration file, limit is : %d\n", PROGRAM_NAME, VERSION_MAJOR, VERSION_MINOR, MAXIMUM_UNITS);
                 send_remote_syslog_message(LOG_ERR, RSYSLOG_ADDRESS, PROGRAM_NAME, log_message);
-                syslog (LOG_ERR, log_message);
+                syslog (LOG_ERR, "%s",log_message);
                 fprintf(stderr, "Too many devices in configuration file, limit is : %d\n", MAXIMUM_UNITS);
                 exit(1);
 
@@ -528,7 +528,7 @@ int main(int argc, char *argv[])
         {
             snprintf(log_message, LOGMESSAGESIZE, "%s v: %d.%d No blank rows in configuration file are allowed\n", PROGRAM_NAME, VERSION_MAJOR, VERSION_MINOR);
             send_remote_syslog_message(LOG_ERR, RSYSLOG_ADDRESS, PROGRAM_NAME, log_message);
-            syslog (LOG_ERR, log_message);
+            syslog (LOG_ERR, "%s",log_message);
             fprintf(stderr, "No blank rows in configuration file are allowed\n");
             exit(1);
         }
@@ -563,7 +563,7 @@ int main(int argc, char *argv[])
     {
         snprintf(log_message, LOGMESSAGESIZE, "%s v: %d.%d failed to connect to MQTT server", PROGRAM_NAME, VERSION_MAJOR, VERSION_MINOR);
         send_remote_syslog_message(LOG_ERR, RSYSLOG_ADDRESS, PROGRAM_NAME, log_message);
-        syslog (LOG_ERR, log_message);
+        syslog (LOG_ERR, "%s",log_message);
         fprintf(stderr, "Failed to connect to MQTT server, return code %d\n", rc);
         exit(1);
     }
@@ -574,13 +574,13 @@ int main(int argc, char *argv[])
 
     snprintf(log_message, LOGMESSAGESIZE, "%s v: %d.%d Bluetooth Adapter : %u has MAC address : %s\n", PROGRAM_NAME, VERSION_MAJOR, VERSION_MINOR, bluetooth_adapter_number, bluetooth_adapter_mac);
     send_remote_syslog_message(LOG_INFO, RSYSLOG_ADDRESS, PROGRAM_NAME, log_message);
-    syslog (LOG_INFO, log_message);
+    syslog (LOG_INFO, "%s",log_message);
     fprintf(stdout, "Bluetooth Adapter : %u has MAC address : %s\n", bluetooth_adapter_number, bluetooth_adapter_mac);
 
     if ( bluetooth_device < 0 ) { 
         snprintf(log_message, LOGMESSAGESIZE, "%s v: %d.%d failed to open HCI device", PROGRAM_NAME, VERSION_MAJOR, VERSION_MINOR);
         send_remote_syslog_message(LOG_ERR, RSYSLOG_ADDRESS, PROGRAM_NAME, log_message);
-        syslog (LOG_ERR, log_message);
+        syslog (LOG_ERR, "%s",log_message);
         fprintf(stderr, "Failed to open HCI device, return code %d\n", bluetooth_device);
         exit(1);
     }
@@ -589,17 +589,17 @@ int main(int argc, char *argv[])
 
     snprintf(log_message, LOGMESSAGESIZE, "%s v: %d.%d Advertising scan type (0=passive, 1=active): %u\n", PROGRAM_NAME, VERSION_MAJOR, VERSION_MINOR, ble_scan_type);
     send_remote_syslog_message(LOG_INFO, RSYSLOG_ADDRESS, PROGRAM_NAME, log_message);
-    syslog (LOG_INFO, log_message);
+    syslog (LOG_INFO, "%s",log_message);
     fprintf(stdout, "Advertising scan type (0=passive, 1=active): %u\n", ble_scan_type);
 
     snprintf(log_message, LOGMESSAGESIZE, "%s v: %d.%d Advertising scan window : %u %.1f ms\n", PROGRAM_NAME, VERSION_MAJOR, VERSION_MINOR, ble_scan_window, ble_scan_window*0.625);
     send_remote_syslog_message(LOG_INFO, RSYSLOG_ADDRESS, PROGRAM_NAME, log_message);
-    syslog (LOG_INFO, log_message);
+    syslog (LOG_INFO, "%s",log_message);
     fprintf(stdout, "Advertising scan window   : %4u, %4.1f ms\n", ble_scan_window, ble_scan_window*0.625);
     
     snprintf(log_message, LOGMESSAGESIZE, "%s v: %d.%d Advertising scan interval : %u %.1f ms\n", PROGRAM_NAME, VERSION_MAJOR, VERSION_MINOR, ble_scan_interval, ble_scan_interval*0.625);
     send_remote_syslog_message(LOG_INFO, RSYSLOG_ADDRESS, PROGRAM_NAME, log_message);
-    syslog (LOG_INFO, log_message);
+    syslog (LOG_INFO, "%s",log_message);
     fprintf(stdout, "Advertising scan interval : %4u, %4.1f ms\n", ble_scan_interval, ble_scan_interval*0.625);
     
     
@@ -621,7 +621,7 @@ int main(int argc, char *argv[])
         hci_close_dev(bluetooth_device);
         snprintf(log_message, LOGMESSAGESIZE, "%s v: %d.%d Failed to set scan parameters data", PROGRAM_NAME, VERSION_MAJOR, VERSION_MINOR);
         send_remote_syslog_message(LOG_ERR, RSYSLOG_ADDRESS, PROGRAM_NAME, log_message);
-        syslog (LOG_ERR, log_message);
+        syslog (LOG_ERR, "%s",log_message);
         fprintf(stderr, "Failed to set scan parameters data, you must run this program as ROOT, return code %d\n", ret);
         exit(1);
     }
@@ -639,7 +639,7 @@ int main(int argc, char *argv[])
         hci_close_dev(bluetooth_device);
         snprintf(log_message, LOGMESSAGESIZE, "%s v: %d.%d Failed to set event mask", PROGRAM_NAME, VERSION_MAJOR, VERSION_MINOR);
         send_remote_syslog_message(LOG_ERR, RSYSLOG_ADDRESS, PROGRAM_NAME, log_message);
-        syslog (LOG_ERR, log_message);
+        syslog (LOG_ERR, "%s",log_message);
         fprintf(stderr, "Failed to set event mask, return code %d\n", ret);
         exit(1);
     }
@@ -658,7 +658,7 @@ int main(int argc, char *argv[])
         hci_close_dev(bluetooth_device);
         snprintf(log_message, LOGMESSAGESIZE, "%s v: %d.%d Failed to enable scan", PROGRAM_NAME, VERSION_MAJOR, VERSION_MINOR);
         send_remote_syslog_message(LOG_ERR, RSYSLOG_ADDRESS, PROGRAM_NAME, log_message);
-        syslog (LOG_ERR, log_message);
+        syslog (LOG_ERR, "%s",log_message);
         fprintf(stderr, "Failed to enable scan, return code %d\n", ret);
         exit(1);
     }
@@ -674,14 +674,14 @@ int main(int argc, char *argv[])
         hci_close_dev(bluetooth_device);
         snprintf(log_message, LOGMESSAGESIZE, "%s v: %d.%d Could not set socket options", PROGRAM_NAME, VERSION_MAJOR, VERSION_MINOR);
         send_remote_syslog_message(LOG_ERR, RSYSLOG_ADDRESS, PROGRAM_NAME, log_message);
-        syslog (LOG_ERR, log_message);
+        syslog (LOG_ERR, "%s",log_message);
         fprintf(stderr, "Could not set socket options, return code %d\n", ret);
         exit(1);
     }
 
     snprintf(log_message, LOGMESSAGESIZE, "%s v: %d.%d Scanning....", PROGRAM_NAME, VERSION_MAJOR, VERSION_MINOR);
     send_remote_syslog_message(LOG_INFO, RSYSLOG_ADDRESS, PROGRAM_NAME, log_message);
-    syslog (LOG_INFO, log_message);
+    syslog (LOG_INFO, "%s",log_message);
 //     fprintf(stdout, "%s v%2d.%02d\n", PROGRAM_NAME, VERSION_MAJOR, VERSION_MINOR);
     fprintf(stdout, "Scanning....\n");
     fflush(stdout);
@@ -801,7 +801,7 @@ int main(int argc, char *argv[])
                 fprintf(stderr, "MQTT payload too long: %d\n", payload_length);
                 snprintf(log_message, LOGMESSAGESIZE, "%s v: %d.%d MQTT payload too long: %d\n", PROGRAM_NAME, VERSION_MAJOR, VERSION_MINOR, payload_length);
                 send_remote_syslog_message(LOG_ERR, RSYSLOG_ADDRESS, PROGRAM_NAME, log_message);
-                syslog (LOG_ERR, log_message);
+                syslog (LOG_ERR, "%s",log_message);
                 exit(1);
             }
 
@@ -1763,24 +1763,22 @@ int main(int argc, char *argv[])
                                 // get rssi
                                 int rssi_int = (signed char) (int8_t)adv_info->data[adv_info->length];
 
-                                if (logging_level == LOG_DEBUG)
-                                {
-                                    fprintf(stdout, "=========\n");
-                                    fprintf(stdout, "Current local time and date: %s", asctime (time_packet_received) );
-                                    fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, device_units_location[mac_index], device_units_type[mac_index]);
-                                    fprintf(stdout, "advertising_packet_type = %03d\n", advertising_packet_type);
-                                    // print whole packet
-                                    printf("==>0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 4 4 5 5 5 5 5 5 5 5 5 5 6 \n");
-                                    printf("==>0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 \n");
-                                    printf("==>                            0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1 2\n");
-                                    printf("==>                            0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 \n");
-                                    printf("==>");
-                                    for(n=0; n < bluetooth_adv_packet_length; n++)
-                                        printf("%02X",(unsigned char)ble_adv_buf[n]);
-                                    printf("\n");
-                                    printf("==>__________ad________________________mmmmmmmmmmmmtttthhbbzbzbccrr\n");
-                                    fprintf(stdout, "rssi         = %03d\n", rssi_int);
-                                }
+
+                                fprintf(stdout, "=========\n");
+                                fprintf(stdout, "Current local time and date: %s", asctime (time_packet_received) );
+                                fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, device_units_location[mac_index], device_units_type[mac_index]);
+                                fprintf(stdout, "advertising_packet_type = %03d\n", advertising_packet_type);
+                                // print whole packet
+                                printf("==>0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 4 4 5 5 5 5 5 5 5 5 5 5 6 \n");
+                                printf("==>0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 \n");
+                                printf("==>                            0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1 2\n");
+                                printf("==>                            0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 \n");
+                                printf("==>");
+                                for(n=0; n < bluetooth_adv_packet_length; n++)
+                                    printf("%02X",(unsigned char)ble_adv_buf[n]);
+                                printf("\n");
+                                printf("==>__________ad________________________mmmmmmmmmmmmtttthhbbzbzbccrr\n");
+                                fprintf(stdout, "rssi         = %03d\n", rssi_int);
                             }
                             fflush(stdout);
                         }
@@ -1799,7 +1797,7 @@ int main(int argc, char *argv[])
     fprintf(stdout, "\n<ctrl>-c signal received, exiting.\n");
     snprintf(log_message, LOGMESSAGESIZE, "%s v: %d.%d <ctrl>-c signal received, exiting.", PROGRAM_NAME, VERSION_MAJOR, VERSION_MINOR);
     send_remote_syslog_message(LOG_INFO, RSYSLOG_ADDRESS, PROGRAM_NAME, log_message);
-    syslog (LOG_INFO, log_message);
+    syslog (LOG_INFO, "%s",log_message);
 
 
     // Disable scanning.
@@ -1812,7 +1810,7 @@ int main(int argc, char *argv[])
         hci_close_dev(bluetooth_device);
         snprintf(log_message, LOGMESSAGESIZE, "%s v: %d.%d Failed to disable scan", PROGRAM_NAME, VERSION_MAJOR, VERSION_MINOR);
         send_remote_syslog_message(LOG_ERR, RSYSLOG_ADDRESS, PROGRAM_NAME, log_message);
-        syslog (LOG_ERR, log_message);
+        syslog (LOG_ERR, "%s",log_message);
         fprintf(stdout, "Failed to disable scan, return code %d\n", ret);
         exit(1);
     }
