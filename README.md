@@ -16,18 +16,11 @@ The program uses the bluetooth and mqtt client libraries, steps to image Raspber
 To compile:
 
 ```
-gcc -o ble_sensor_mqtt_pub ble_sensor_mqtt_pub.c -lbluetooth  -l paho-mqtt3c
-
+gcc -o ble_sensor_mqtt_pub ble_sensor_mqtt_pub.c -lbluetooth  -lpaho-mqtt3c -lyaml
 ```
-To run:
+To run (note: BLE scanning requires root equivalent rights, therefore sudo is necessary):
 ```
-sudo ble_sensor_mqtt_pub <bluetooth adapter> <scan type> <scan window> <scan interval>
-
-bluetooth adapter = integer number of bluetooth devices, run hciconfig to see your adapters, 1st adapter is referenced as 0 in this program
-scan type = 0 for passive, 1 for active advertising scan, some BLE sensors only share data on type 4 response active advertising packets
-scan window = integer number that is multiplied by 0.625 to set advertising scanning window in milliseconds. Try 100 to start.
-scan interval = integer number that is multiplied by 0.625 to set advertising scanning interval in milliseconds. Try 1000 to start.
-BLE scanning requires root equivalent rights, therefore sudo is necessary.
+sudo ble_sensor_mqtt_pub <path to yaml config>
  ```
  
 ## Example JSON published to MQTT topic:
@@ -107,16 +100,49 @@ Example:
 
 ## Configuration file:
 
-Please note the program is very UNFORGIVING of format mistakes in this file! Lines must match format, the third line of column headers is required. See included configuration file, this sets MQTT server, MQTT base topic and details about each BLE sensor. Key info you need to have is MAC Address of each sensor and the device type of each.
+The configuration file is normal YAML.  The included sample config has more detail but here is an example config with 4 sensors.
 
 ```
-tcp://172.148.5.11:1883
-homeassistant/sensor/ble-temp/
-mac address, type, location
-DD:C1:38:70:0C:24,  1, Living Room
-DD:C1:38:AC:77:44,  3, Shared Bathroom
-DD:12:1D:22:80:77,  6, Attic
-DD:C1:38:AC:28:A2, 99, LYWSD03MMC test
+mqtt_server_url: "tcp://172.148.5.11:1883"
+mqtt_base_topic: "homeassistant/sensor/ble-temp/"
+
+mqtt_username: "mosquitto"
+mqtt_password: "mosquitto_pass"
+
+# bluetooth adapter = integer number of bluetooth devices, run hciconfig to see your adapters, 1st adapter is referenced as 0 in this program
+bluetooth_adapter: 0
+
+# scan type = 0 for passive, 1 for active advertising scan, some BLE sensors only share data on type 4 response active advertising packets
+scan_type: 1
+
+# integer number that is multiplied by 0.625 to set advertising scanning window in milliseconds. Try 100 to start.
+scan_window: 100
+
+# integer number that is multiplied by 0.625 to set advertising scanning interval in milliseconds. Try 1000 to start.
+scan_interval: 1000
+
+logging_level: 3
+
+sensors:
+  - name: "Living Room"
+    location: "Living Room"
+    type: 1
+    mac: "DD:C1:38:70:0C:24"
+
+  - name: "Shared Bathroom"
+    Location: "Shared Bathroom"
+    ype: 3
+    mac: "DD:C1:38:AC:77:44"
+
+  - name: "Attic"
+    location: "Attic"
+    type: 3
+    mac: "DD:12:1D:22:80:77"
+
+  - name: "LYWSD03MMC test"
+    location: "Garage"
+    type: 99
+    mac: "DD:C1:38:AC:28:A2"
 
 ```
 
@@ -232,13 +258,15 @@ sudo apt-get install libssl-dev
 
 sudo apt-get install libbluetooth-dev
 
+sudo apt-get install libyaml-dev
+
 git clone https://github.com/eclipse/paho.mqtt.c.git
 cd paho.mqtt.c/
 make
 sudo make install
 
 cd /home/pi/bluetooth-temperature-sensors
-gcc -o ble_sensor_mqtt_pub ble_sensor_mqtt_pub.c -lbluetooth  -l paho-mqtt3c
+gcc -o ble_sensor_mqtt_pub ble_sensor_mqtt_pub.c -lbluetooth  -lpaho-mqtt3c -lyaml
 
 pi@pi-ble-02:~/bluetooth-temperature-sensors $ lsusb
 Bus 001 Device 005: ID 0a5c:21e8 Broadcom Corp. BCM20702A0 Bluetooth 4.0
@@ -250,8 +278,8 @@ hci0:	Type: Primary  Bus: USB
 	RX bytes:980 acl:0 sco:0 events:51 errors:0
 	TX bytes:2446 acl:0 sco:0 commands:51 errors:0
 
-pi@pi-ble-02:~/bluetooth-temperature-sensors $ sudo ./ble_sensor_mqtt_pub 0 1 100 1000
-ble_sensor_mqtt_pub v 2.11
+pi@pi-ble-02:~/bluetooth-temperature-sensors $ sudo ./ble_sensor_mqtt_pub config.yaml
+ble_sensor_mqtt_pub v 3.0
 1 Bluetooth adapter(s) in system.
 Reading configuration file : ble_sensor_mqtt_pub.csv
 MQTT server : tcp://172.168.2.22:1883

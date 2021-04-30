@@ -17,14 +17,16 @@
 //  Copyright (c) 2015 Damian Kołakowski. All rights reserved.
 //
 
-#define VERSION_MAJOR 2
-#define VERSION_MINOR 13
+#define VERSION_MAJOR 3
+#define VERSION_MINOR 0
 // why is it so hard to get the base name of the program withOUT the .c extension!!!!!!!
 
 #define PROGRAM_NAME "ble_sensor_mqtt_pub"
 // program configuration file,
 // holds list of BLE sensors to track
-#define  CONFIGURATION_FILE "ble_sensor_mqtt_pub.csv"
+#define  CONFIGURATION_FILE "/etc/ble_sensor_mqtt_pub.yaml"
+
+#define MAX_SENSORS 64
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -45,6 +47,7 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
+#include <yaml.h>
 #include "MQTTClient.h"
 
 // logging setup
@@ -65,9 +68,9 @@
 // LOG_DEBUG
 // A message useful for debugging programs.
 
-int logging_level = LOG_INFO;
+// int logging_level = LOG_INFO;
 // int logging_level = LOG_ERR;
-// int logging_level = LOG_DEBUG;
+ int logging_level = LOG_DEBUG;
 
 
 #define RSYSLOG_ADDRESS "192.168.2.5"
@@ -92,7 +95,7 @@ char z_client_id_mqtt[MQTTCLIENTIDSIZE];
 // base topic:
 // each sensor with publish it's data under this base, example:
 // homeassistant/sensor/ble-temp/A4:C1:38:DB:64:96
-char topic_base[128];
+//char topic_base[128];
 //const char topic_base[] = "homeassistant/sensor/ble-temp/";
 // under the base topic, this sub topic will publish statistics
 // topic for hourly statistics
@@ -110,6 +113,51 @@ struct hci_request ble_hci_request(uint16_t ocf, int clen, void * status, void *
     rq.rlen = 1;
     return rq;
 }
+
+typedef struct  {
+    int type;
+    char mac[19];
+    char location[30];
+    char nice_name[17];
+    int readings_per_hour;
+} sensor_t;
+
+typedef struct  {
+    char mqtt_server_url[128];
+    char mqtt_base_topic[128];
+    char mqtt_username[64];
+    char mqtt_password[64];
+    int bluetooth_adapter;
+    int scan_type;
+    int scan_window;
+    int scan_interval;
+    int publish_type;
+    int auto_configure;
+    char syslog_address[64];
+    int logging_level;
+    sensor_t sensors[MAX_SENSORS];
+} config_t;
+
+
+/* Global parser */
+unsigned int parser( config_t* config, char** argv );
+
+/* Parser utilities */
+void init_prs( FILE* fp, yaml_parser_t* parser );
+void parse_next( yaml_parser_t* parser, yaml_event_t* event );
+void clean_prs( FILE* fp, yaml_parser_t* parser, yaml_event_t* event );
+
+/* Parser actions */
+void event_switch( bool* seq_status, unsigned int* map_seq, config_t* config,
+                   yaml_parser_t* parser, yaml_event_t* event, FILE* fp );
+void to_data( bool* seq_status, unsigned int* map_seq, config_t* config,
+              yaml_parser_t* parser, yaml_event_t* event, FILE* fp );
+void to_data_from_map( char* buf, unsigned int* map_seq, config_t* config,
+                       yaml_parser_t* parser, yaml_event_t* event, FILE* fp );
+
+/* Post parsing utilities */
+void print_data( unsigned int sensor_count, config_t* config );
+
 
 // returns a structure with info about each bluetooth adapter found on system and returns number of adapters found
 static int hci_devlist(struct hci_dev_info **di, int *num)
@@ -328,10 +376,31 @@ int main(int argc, char *argv[])
     act.sa_handler = intHandler;
     sigaction(SIGINT, &act, NULL);
 
+    if (argc != 2)
+    {
+        snprintf(log_message, LOGMESSAGESIZE, "%s v: %d.%d Start program with a single argument pointing to yaml config file\n", PROGRAM_NAME, VERSION_MAJOR, VERSION_MINOR);
+        send_remote_syslog_message(LOG_ERR, RSYSLOG_ADDRESS, PROGRAM_NAME, log_message);
+        syslog (LOG_ERR, "%s",log_message);
+        fprintf(stderr, "Start program with a single argument pointing to yaml config file\n");
+        exit(1);
+    }
+
+    config_t config;
+
+    int sensor_count;
+    sensor_count = parser( &config, argv);
+
+    logging_level = config.logging_level; 
+
+    if ( logging_level > LOG_NOTICE)
+    {
+      print_data(sensor_count, &config);
+    }
+
     int hci_devs_num;
     struct hci_dev_info *hci_devs;
 
-    int ret, hci_return, status;
+    int ret, status;
 
     // bluetooth adapter mac address
     char bluetooth_adapter_mac[19];
@@ -353,21 +422,12 @@ int main(int argc, char *argv[])
         fprintf(stdout,"%u Bluetooth adapter(s) in system.\n", hci_devs_num);
     }
 
-    if (argc != 5)
-    {
-        snprintf(log_message, LOGMESSAGESIZE, "%s v: %d.%d Start program with four arguments, the bluetooth adapter number, scan type (0=passive, 1=active), BLE scan Window (0 for default), BLE scan Interval (0 for default)\n", PROGRAM_NAME, VERSION_MAJOR, VERSION_MINOR);
-        send_remote_syslog_message(LOG_ERR, RSYSLOG_ADDRESS, PROGRAM_NAME, log_message);
-        syslog (LOG_ERR, "%s",log_message);
-        fprintf(stderr, "Start program with four arguments, the bluetooth adapter number, scan type (0=passive, 1=active), BLE scan Window (0 for default), BLE scan Interval (0 for default)\n");
-        exit(1);
-    }
-
     // get requested adapter number from command line
-    bluetooth_adapter_number = atoi(argv[1]);
+    bluetooth_adapter_number = config.bluetooth_adapter;
 
     int ble_scan_type; // 0 = passive, 1 = active scan
     
-    ble_scan_type = atoi(argv[2]);
+    ble_scan_type = config.scan_type;
     
     if (ble_scan_type != 1)
     {
@@ -379,14 +439,14 @@ int main(int argc, char *argv[])
     int ble_scan_window = 48; // value * 0.625 ms, window 30 milliseconds
     int ble_scan_interval = 1500; // value * 0.625 ms, scan every 975 milliseconds
 
-    ble_scan_window = atoi(argv[3]);
+    ble_scan_window = config.scan_window;
     
     if (ble_scan_window == 0)
     {
         ble_scan_window = 48;
     }
 
-    ble_scan_interval = atoi(argv[4]);
+    ble_scan_interval = config.scan_interval;
 
     if (ble_scan_interval == 0)
     {
@@ -414,128 +474,14 @@ int main(int argc, char *argv[])
     syslog (LOG_INFO, "%s",log_message);
 
     // maximum number of sensors
-    #define MAXIMUM_UNITS 40
+    // #define MAXIMUM_UNITS 40
     // number of devices read from configuration file
     int mac_total;
 
-    // type of ble temperature sensor
-    int device_units_type[MAXIMUM_UNITS]; // type of sensor
-
-    // text description of sensor location
-    char device_units_location[MAXIMUM_UNITS][30];
-
-    // MAC address of sensor in ASCII
-    char device_units_mac[MAXIMUM_UNITS][19];
-
-    // name of device stored within, if supported and if retrieved from BLE advertising packet
-    char device_units_nice_name[MAXIMUM_UNITS][17];
-
-    // keep track of number of advertising packets we receive from each unit each hour
-    int device_units_reading_per_hour[MAXIMUM_UNITS] = { 0 };
-
-    // used to retrieve the name of device stored in BLE advertising pack
-    char nice_name [17];
-    int nice_name_start;
-    int nice_name_length;
     int sensor_data_start;
 
-    // read the list of BLE sensors to track from configuration file
-
-    // row in configuration file, starting at 1
-    int row_number;
-
-    // index of unit number, starting at zero
-    int unit_number;
-
-    char fname[256] = CONFIGURATION_FILE;
-
-    fprintf(stdout, "Reading configuration file : %s\n", fname);
-
-    FILE* stream = fopen(fname, "r");
-
-    char line[1024];
-    char* tmp;
-    char field_01[100];
-    char field_02[100];
-    char field_03[100];
-    row_number = 0;
-    unit_number = 0;
-
-    while (fgets(line, 1024, stream))
-    {
-        // if line is blank, skip
-        if( strlen(trim(line)) > 0 )
-        {
-            // NOTE strtok clobbers tmp
-            row_number = row_number + 1;
-
-            if ( unit_number + 1 > MAXIMUM_UNITS )
-            {
-                snprintf(log_message, LOGMESSAGESIZE, "%s v: %d.%d Too many devices in configuration file, limit is : %d\n", PROGRAM_NAME, VERSION_MAJOR, VERSION_MINOR, MAXIMUM_UNITS);
-                send_remote_syslog_message(LOG_ERR, RSYSLOG_ADDRESS, PROGRAM_NAME, log_message);
-                syslog (LOG_ERR, "%s",log_message);
-                fprintf(stderr, "Too many devices in configuration file, limit is : %d\n", MAXIMUM_UNITS);
-                exit(1);
-
-            }
-
-            switch (row_number)
-            {
-            // row 1 is MQTT server string
-                case 1:
-                    strcpy(mqtt_server_address, trim(line));
-                    fprintf(stdout, "MQTT server : %s\n", mqtt_server_address);
-                    break;
-            
-            // row 2 is MQTT topic
-                case 2:
-                    strcpy(topic_base, trim(line));
-                    fprintf(stdout, "MQTT topic  : %s\n", topic_base);
-                    break;
-            
-            // row 3 of configuration file must be column header row
-                case 3:
-                    fprintf(stdout, "Header      |MAC Address      |Type|Location                      |\n");
-                    break;
-
-            // row 4 and beyond must contain sensor unit information
-                default:
-                    fprintf(stdout, "Unit  : %3d ", unit_number);
-
-                    // blank the nice name of unit
-                    device_units_nice_name[unit_number][0] = '\0';
-
-                    tmp = strdup(line);
-                    strcpy(field_01, trim(getfield(tmp, 1)));
-                    strcpy(device_units_mac[unit_number], field_01); 
-                    fprintf(stdout, "|%-17s", device_units_mac[unit_number]);
-                    free(tmp);
-                    tmp = strdup(line);
-                    strcpy(field_02, trim(getfield(tmp, 2)));
-                    device_units_type[unit_number] = atoi(field_02);
-                    fprintf(stdout, "|%4d", device_units_type[unit_number]);
-                    free(tmp);
-                    tmp = strdup(line);
-                    strcpy(field_03, trim(getfield(tmp, 3)));
-                    strcpy(device_units_location[unit_number], field_03);
-                    fprintf(stdout, "|%-30s|\n", device_units_location[unit_number]);
-                    free(tmp);
-                
-                    unit_number = unit_number + 1;
-            }
-        }
-        else
-        {
-            snprintf(log_message, LOGMESSAGESIZE, "%s v: %d.%d No blank rows in configuration file are allowed\n", PROGRAM_NAME, VERSION_MAJOR, VERSION_MINOR);
-            send_remote_syslog_message(LOG_ERR, RSYSLOG_ADDRESS, PROGRAM_NAME, log_message);
-            syslog (LOG_ERR, "%s",log_message);
-            fprintf(stderr, "No blank rows in configuration file are allowed\n");
-            exit(1);
-        }
-    }
-
     // total number of devices read from configuration file
-    mac_total = unit_number;
+    mac_total = sensor_count;
 
     fprintf(stdout, "Total devices in configuration file : %d\n", mac_total);
 
@@ -554,10 +500,12 @@ int main(int argc, char *argv[])
     // set MQTT client ID to program name plus bluetooth mac address, to allow multiple instances on one machine
     snprintf(z_client_id_mqtt, MQTTCLIENTIDSIZE, "%s-%s", PROGRAM_NAME, bluetooth_adapter_mac);
     fprintf(stdout, "MQTT client name : %s\n", z_client_id_mqtt); 
-    MQTTClient_create(&client, mqtt_server_address, z_client_id_mqtt, MQTTCLIENT_PERSISTENCE_NONE, NULL);
+    MQTTClient_create(&client, config.mqtt_server_url, z_client_id_mqtt, MQTTCLIENT_PERSISTENCE_NONE, NULL);
 //     MQTTClient_create(&client, ADDRESS, CLIENTID, MQTTCLIENT_PERSISTENCE_NONE, NULL);
     conn_opts.keepAliveInterval = 20;
     conn_opts.cleansession = 1;
+    conn_opts.username = config.mqtt_username;
+    conn_opts.password = config.mqtt_password;
     MQTTClient_setCallbacks(client, NULL, connlost, msgarrvd, delivered);
     if ((rc = MQTTClient_connect(client, &conn_opts)) != MQTTCLIENT_SUCCESS)
     {
@@ -700,6 +648,7 @@ int main(int argc, char *argv[])
     // MQTT payload buffer
     int payload_length;
     char payload_buffer[MAXIMUM_JSON_MESSAGE];
+
     // int payload_buff_size = 300;
 
     // holds current time of current advertising packet that is received
@@ -777,14 +726,14 @@ int main(int argc, char *argv[])
             int n;
             for( n=0; n <= mac_total - 1; n++ )
             {
-                count_string_length  = snprintf(count_string_buffer, count_string_size, "\"%s\":{\"count\":%d, \"location\":\"%s\"},", device_units_mac[n], device_units_reading_per_hour[n], device_units_location[n]);
+                count_string_length  = snprintf(count_string_buffer, count_string_size, "\"%s\":{\"count\":%d, \"location\":\"%s\"},", config.sensors[n].mac, config.sensors[n].readings_per_hour, config.sensors[n].location);
                 strcat(payload_buffer, count_string_buffer);
                 // if ( n < mac_total - 1 )
                 //     strcat(payload_buffer, ",");
 
-                fprintf(stderr, "Location : %s packets received in last hour : %d %s\n", device_units_mac[n], device_units_reading_per_hour[n], device_units_location[n]);
-                total_advertising_packets = total_advertising_packets + device_units_reading_per_hour[n];
-                device_units_reading_per_hour[n] = 0;
+                fprintf(stderr, "Location : %s packets received in last hour : %d %s\n", config.sensors[n].mac, config.sensors[n].readings_per_hour, config.sensors[n].location);
+                total_advertising_packets = total_advertising_packets + config.sensors[n].readings_per_hour;
+                config.sensors[n].readings_per_hour = 0;
             }
 
             // append the total of all advertising packets for all sensors of this type in last hour
@@ -808,7 +757,7 @@ int main(int argc, char *argv[])
             // publish it to a statistics topic under the root topic
             topic_length = snprintf(topic_buffer, topic_buffer_size,
                "%s%s",
-               topic_base, topic_statistics);
+               config.mqtt_base_topic, topic_statistics);
 
             // publish the message and wait for success
             pubmsg.payload = payload_buffer;
@@ -850,15 +799,13 @@ int main(int argc, char *argv[])
 
                     for (i_match = 0; i_match < mac_total; ++i_match)
                     {
-                        if (strcmp(addr, device_units_mac[i_match]) == 0)
+                        if (strcmp(addr, config.sensors[i_match].mac) == 0)
                         {
                             mac_match = 1;
                             // keep a pointer to the mac address we matched
                             mac_index = i_match;
                         }
                     }
-
-                    int advertising_packet_type; // type of advertising packet
 
                     // found the mac address in our list we are interested in, so decipher it's data
                     // if (1 == 1)
@@ -868,11 +815,10 @@ int main(int argc, char *argv[])
                         // different processing based on the device type, each type has different formats of advertising packets
 
                         // 1 = Xiaomi LYWSD03MMC-ATC
-                        if ( device_units_type[mac_index] == 1 )
+                        if ( config.sensors[mac_index].type == 1 )
                         {
                             int advertising_packet_type; // type of advertising packet
-
-                            // printf("=========\n");
+                            //printf("=========\n");
                             //get the time that we received the scan response packet
                             time( &rawtime );
                             tm = *gmtime( &rawtime );
@@ -880,7 +826,7 @@ int main(int argc, char *argv[])
 
                             // printf ( "Current local time and date: %s", asctime (timeinfo) );
 
-                            // printf("mac address =  %s  location = %s ", addr, device_units_location[mac_index]);
+                            // printf("mac address =  %s  location = %s ", addr, config.sensors[mac_index].location);
 
                             advertising_packet_type = (unsigned int)ble_adv_buf[5];
                             // printf("advertising_packet_type = %03d\n", advertising_packet_type);
@@ -898,7 +844,6 @@ int main(int argc, char *argv[])
                             // data is sent in the ScanRspData field of SCAN_RSP packets.
                             // https://www.libelium.com/forum/libelium_files/bt4_core_spec_adv_data_reference.pdf
 
-
                             if ( advertising_packet_type == 0)
                             {
 
@@ -911,7 +856,7 @@ int main(int argc, char *argv[])
                                 {
                                     fprintf(stdout, "=========\n");
                                     fprintf(stdout, "Current local time and date: %s", asctime (time_packet_received) );
-                                    fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, device_units_location[mac_index], device_units_type[mac_index]);
+                                    fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, config.sensors[mac_index].location, config.sensors[mac_index].type);
                                     fprintf(stdout, "advertising_packet_type = %03d\n", advertising_packet_type);
                                     fprintf(stdout, "rssi         = %03d\n", rssi_int);
                                 }
@@ -948,29 +893,25 @@ int main(int argc, char *argv[])
                                     fprintf(stdout, "battery mv   =  %4d\n", battery_mv_int);
                                     fprintf(stdout, "frame        =   %3d\n", frame_int);
                                 }
-
                                 // count the number of advertising packets we get from each unit
 
-                                device_units_reading_per_hour[mac_index] = device_units_reading_per_hour[mac_index] + 1;
-
+                                config.sensors[mac_index].readings_per_hour = config.sensors[mac_index].readings_per_hour + 1;
                                 payload_length = snprintf(payload_buffer, MAXIMUM_JSON_MESSAGE,
                                     "{\"timestamp\":\"%04d%02d%02d%02d%02d%02d\",\"mac-address\":\"%s\",\"rssi\":%d,\"temperature\":%#.1F,\"units\":\"F\",\"temperature-celsius\":%#.1F,\"humidity\":%i,\"battery-pct\":%i,\"battery-mv\":%i,\"frame\":%i,\"sensor-name\":\"%s\",\"location\":\"%s\",\"sensor-type\":\"%d\"}",
-                                        tm.tm_year+1900, tm.tm_mon+1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, \
-                                        addr, rssi_int, temperature_fahrenheit, \
-                                        temperature_celsius, \
-                                        humidity_int, battery_pct_int, battery_mv_int, frame_int, \
-                                        device_units_nice_name[mac_index], \
-                                        device_units_location[mac_index],
-                                        device_units_type[mac_index]
-                                   );
-
+                                        tm.tm_year+1900, tm.tm_mon+1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, 
+                                        addr, rssi_int, temperature_fahrenheit, 
+                                        temperature_celsius, 
+                                        humidity_int, battery_pct_int, battery_mv_int, frame_int, 
+                                        config.sensors[mac_index].nice_name, 
+                                        config.sensors[mac_index].location, 
+                                        config.sensors[mac_index].type 
+                                    );
                                 if (payload_length >= MAXIMUM_JSON_MESSAGE) 
                                 // if (payload_length >= payload_buff_size)
                                 {
                                    fprintf(stderr, "MQTT payload too long, %d\n", payload_length);
                                    exit(-1);
                                 }
-
                                 // // create the MQTT topic from the base topic string and the MAC address of sensor
                                 // int topic_length;
                                 // char topic_buffer[200];
@@ -978,7 +919,7 @@ int main(int argc, char *argv[])
 
                                 topic_length = snprintf(topic_buffer, topic_buffer_size,
                                    "%s%s",
-                                   topic_base, addr);
+                                   config.mqtt_base_topic, addr);
 
                                 // publish the message and wait for success
                                 pubmsg.payload = payload_buffer;
@@ -1003,7 +944,7 @@ int main(int argc, char *argv[])
                         // end device type 1
 
                         // 2 = Govee H5052
-                        if ( device_units_type[mac_index] == 2 )
+                        if ( config.sensors[mac_index].type == 2 )
                         {
                             //get the time that we received the scan response packet
                             time( &rawtime );
@@ -1033,14 +974,14 @@ int main(int argc, char *argv[])
                                 {
                                     fprintf(stdout, "=========\n");
                                     fprintf(stdout, "Current local time and date: %s", asctime (time_packet_received) );
-                                    fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, device_units_location[mac_index], device_units_type[mac_index]);
+                                    fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, config.sensors[mac_index].location, config.sensors[mac_index].type);
                                     fprintf(stdout, "advertising_packet_type = %03d\n", advertising_packet_type);
                                     fprintf(stdout, "rssi         = %03d\n", rssi_int);
                                 }
 
 //                                 fprintf(stdout, "=========\n");
 //                                 fprintf(stdout, "Current local time and date: %s", asctime (time_packet_received) );
-//                                 fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, device_units_location[mac_index], device_units_type[mac_index]);
+//                                 fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, config.sensors[mac_index].location, config.sensors[mac_index].location);
 // 
 //                                 fprintf(stdout, "advertising_packet_type = %03d\n", advertising_packet_type);
 
@@ -1073,7 +1014,7 @@ int main(int argc, char *argv[])
 
                                 // count the number of advertising packets we get from each unit
 
-                                device_units_reading_per_hour[mac_index] = device_units_reading_per_hour[mac_index] + 1;
+                                config.sensors[mac_index].readings_per_hour = config.sensors[mac_index].readings_per_hour + 1;
 
                                 // create JSON formatted string for MQTT payload, now publishing both fahrenheit and celsius temperatures for homekit
                                 // BE CAREFUL of playload length limits!!
@@ -1087,9 +1028,9 @@ int main(int argc, char *argv[])
                                         addr, rssi_int, temperature_fahrenheit, \
                                         temperature_celsius, \
                                         humidity, battery_precentage_int, \
-                                        device_units_nice_name[mac_index], \
-                                        device_units_location[mac_index],
-                                        device_units_type[mac_index]
+                                        config.sensors[mac_index].nice_name, \
+                                        config.sensors[mac_index].location,
+                                        config.sensors[mac_index].type
                                    );
 
                                 if (payload_length >= MAXIMUM_JSON_MESSAGE) 
@@ -1106,7 +1047,7 @@ int main(int argc, char *argv[])
 
                                 topic_length = snprintf(topic_buffer, topic_buffer_size,
                                    "%s%s",
-                                   topic_base, addr);
+                                   config.mqtt_base_topic, addr);
 
                                 // publish the message and wait for success
                                 pubmsg.payload = payload_buffer;
@@ -1127,7 +1068,7 @@ int main(int argc, char *argv[])
                         //end device type 2
 
                         // device type 3 = Govee H5072
-                        if ( device_units_type[mac_index] == 3 )
+                        if ( config.sensors[mac_index].type == 3 )
                         {
                             //get the time that we received the scan response packet
                             time( &rawtime );
@@ -1152,14 +1093,14 @@ int main(int argc, char *argv[])
                                 {
                                     fprintf(stdout, "=========\n");
                                     fprintf(stdout, "Current local time and date: %s", asctime (time_packet_received) );
-                                    fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, device_units_location[mac_index], device_units_type[mac_index]);
+                                    fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, config.sensors[mac_index].location, config.sensors[mac_index].type);
                                     fprintf(stdout, "advertising_packet_type = %03d\n", advertising_packet_type);
                                     fprintf(stdout, "rssi         = %03d\n", rssi_int);
                                 }
 
 //                                 fprintf(stdout, "=========\n");
 //                                 fprintf(stdout, "Current local time and date: %s", asctime (time_packet_received) );
-//                                 fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, device_units_location[mac_index], device_units_type[mac_index]);
+//                                 fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, config.sensors[mac_index].location, config.sensors[mac_index].type);
 // 
 //                                 fprintf(stdout, "advertising_packet_type = %03d\n", advertising_packet_type);
 
@@ -1219,7 +1160,7 @@ int main(int argc, char *argv[])
 
                                 // count the number of advertising packets we get from each unit
 
-                                device_units_reading_per_hour[mac_index] = device_units_reading_per_hour[mac_index] + 1;
+                                config.sensors[mac_index].readings_per_hour = config.sensors[mac_index].readings_per_hour + 1;
 
                                 // create JSON formatted string for MQTT payload, now publishing both fahrenheit and celsius temperatures for homekit
                                 // BE CAREFUL of playload length limits!!
@@ -1233,9 +1174,9 @@ int main(int argc, char *argv[])
                                         addr, rssi_int, temperature_fahrenheit, \
                                         temperature_celsius, \
                                         humidity, battery_precentage_int, \
-                                        device_units_nice_name[mac_index], \
-                                        device_units_location[mac_index],
-                                        device_units_type[mac_index]
+                                        config.sensors[mac_index].nice_name, \
+                                        config.sensors[mac_index].location,
+                                        config.sensors[mac_index].type
                                    );
 
                                 if (payload_length >= MAXIMUM_JSON_MESSAGE) 
@@ -1252,7 +1193,7 @@ int main(int argc, char *argv[])
 
                                 topic_length = snprintf(topic_buffer, topic_buffer_size,
                                    "%s%s",
-                                   topic_base, addr);
+                                   config.mqtt_base_topic, addr);
 
                                 // publish the message and wait for success
                                 pubmsg.payload = payload_buffer;
@@ -1276,7 +1217,7 @@ int main(int argc, char *argv[])
                         // end device type 3
 
                         // device type 4 = Govee H5102
-                        if ( device_units_type[mac_index] == 4 )
+                        if ( config.sensors[mac_index].type == 4 )
                         {
                             //get the time that we received the scan response packet
                             time( &rawtime );
@@ -1301,14 +1242,14 @@ int main(int argc, char *argv[])
                                 {
                                     fprintf(stdout, "=========\n");
                                     fprintf(stdout, "Current local time and date: %s", asctime (time_packet_received) );
-                                    fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, device_units_location[mac_index], device_units_type[mac_index]);
+                                    fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, config.sensors[mac_index].location, config.sensors[mac_index].type);
                                     fprintf(stdout, "advertising_packet_type = %03d\n", advertising_packet_type);
                                     fprintf(stdout, "rssi         = %03d\n", rssi_int);
                                 }
 
 //                                 fprintf(stdout, "=========\n");
 //                                 fprintf(stdout, "Current local time and date: %s", asctime (time_packet_received) );
-//                                 fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, device_units_location[mac_index], device_units_type[mac_index]);
+//                                 fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, config.sensors[mac_index].location, config.sensors[mac_index].type);
 // 
 //                                 fprintf(stdout, "advertising_packet_type = %03d\n", advertising_packet_type);
 
@@ -1367,7 +1308,7 @@ int main(int argc, char *argv[])
 
                                 // count the number of advertising packets we get from each unit
 
-                                device_units_reading_per_hour[mac_index] = device_units_reading_per_hour[mac_index] + 1;
+                                config.sensors[mac_index].readings_per_hour = config.sensors[mac_index].readings_per_hour + 1;
 
                                 // create JSON formatted string for MQTT payload, now publishing both fahrenheit and celsius temperatures for homekit
                                 // BE CAREFUL of playload length limits!!
@@ -1381,9 +1322,9 @@ int main(int argc, char *argv[])
                                         addr, rssi_int, temperature_fahrenheit, \
                                         temperature_celsius, \
                                         humidity, battery_precentage_int, \
-                                        device_units_nice_name[mac_index], \
-                                        device_units_location[mac_index],
-                                        device_units_type[mac_index]
+                                        config.sensors[mac_index].nice_name, \
+                                        config.sensors[mac_index].location,
+                                        config.sensors[mac_index].type
                                    );
 
                                 if (payload_length >= MAXIMUM_JSON_MESSAGE) 
@@ -1400,7 +1341,7 @@ int main(int argc, char *argv[])
 
                                 topic_length = snprintf(topic_buffer, topic_buffer_size,
                                    "%s%s",
-                                   topic_base, addr);
+                                   config.mqtt_base_topic, addr);
 
                                 // publish the message and wait for success
                                 pubmsg.payload = payload_buffer;
@@ -1425,7 +1366,7 @@ int main(int argc, char *argv[])
                         // end device type 4
 
                         // device type 5 = Govee H5075
-                        if ( device_units_type[mac_index] == 5 )
+                        if ( config.sensors[mac_index].type == 5 )
                         {
                             //get the time that we received the scan response packet
                             time( &rawtime );
@@ -1450,14 +1391,14 @@ int main(int argc, char *argv[])
                                 {
                                     fprintf(stdout, "=========\n");
                                     fprintf(stdout, "Current local time and date: %s", asctime (time_packet_received) );
-                                    fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, device_units_location[mac_index], device_units_type[mac_index]);
+                                    fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, config.sensors[mac_index].location, config.sensors[mac_index].type);
                                     fprintf(stdout, "advertising_packet_type = %03d\n", advertising_packet_type);
                                     fprintf(stdout, "rssi         = %03d\n", rssi_int);
                                 }
 
 //                                 fprintf(stdout, "=========\n");
 //                                 fprintf(stdout, "Current local time and date: %s", asctime (time_packet_received) );
-//                                 fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, device_units_location[mac_index], device_units_type[mac_index]);
+//                                 fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, config.sensors[mac_index].location, config.sensors[mac_index].type);
 // 
 //                                 fprintf(stdout, "advertising_packet_type = %03d\n", advertising_packet_type);
 
@@ -1516,7 +1457,7 @@ int main(int argc, char *argv[])
 
                                 // count the number of advertising packets we get from each unit
 
-                                device_units_reading_per_hour[mac_index] = device_units_reading_per_hour[mac_index] + 1;
+                                config.sensors[mac_index].readings_per_hour = config.sensors[mac_index].readings_per_hour + 1;
 
                                 // create JSON formatted string for MQTT payload, now publishing both fahrenheit and celsius temperatures for homekit
                                 // BE CAREFUL of playload length limits!!
@@ -1530,9 +1471,9 @@ int main(int argc, char *argv[])
                                         addr, rssi_int, temperature_fahrenheit, \
                                         temperature_celsius, \
                                         humidity, battery_precentage_int, \
-                                        device_units_nice_name[mac_index], \
-                                        device_units_location[mac_index],
-                                        device_units_type[mac_index]
+                                        config.sensors[mac_index].nice_name, \
+                                        config.sensors[mac_index].location,
+                                        config.sensors[mac_index].type
                                    );
 
                                 if (payload_length >= MAXIMUM_JSON_MESSAGE) 
@@ -1549,7 +1490,7 @@ int main(int argc, char *argv[])
 
                                 topic_length = snprintf(topic_buffer, topic_buffer_size,
                                    "%s%s",
-                                   topic_base, addr);
+                                   config.mqtt_base_topic, addr);
 
                                 // publish the message and wait for success
                                 pubmsg.payload = payload_buffer;
@@ -1574,7 +1515,7 @@ int main(int argc, char *argv[])
                         // end device type 5
 
                         // device type 6 = Govee H5074
-                        if ( device_units_type[mac_index] == 6 )
+                        if ( config.sensors[mac_index].type == 6 )
                         {
                             //get the time that we received the scan response packet
                             time( &rawtime );
@@ -1609,14 +1550,14 @@ int main(int argc, char *argv[])
                                 {
                                     fprintf(stdout, "=========\n");
                                     fprintf(stdout, "Current local time and date: %s", asctime (time_packet_received) );
-                                    fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, device_units_location[mac_index], device_units_type[mac_index]);
+                                    fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, config.sensors[mac_index].location, config.sensors[mac_index].type);
                                     fprintf(stdout, "advertising_packet_type = %03d\n", advertising_packet_type);
                                     fprintf(stdout, "rssi         = %03d\n", rssi_int);
                                 }
 
 //                                     fprintf(stdout, "=========\n");
 //                                     fprintf(stdout, "Current local time and date: %s", asctime (time_packet_received) );
-//                                     fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, device_units_location[mac_index], device_units_type[mac_index]);
+//                                     fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, config.sensors[mac_index].location, config.sensors[mac_index].type);
 // 
 //                                     fprintf(stdout, "advertising_packet_type = %03d\n", advertising_packet_type);
 
@@ -1649,7 +1590,7 @@ int main(int argc, char *argv[])
 
                                     // count the number of advertising packets we get from each unit
 
-                                    device_units_reading_per_hour[mac_index] = device_units_reading_per_hour[mac_index] + 1;
+                                    config.sensors[mac_index].readings_per_hour = config.sensors[mac_index].readings_per_hour + 1;
 
                                     // create JSON formatted string for MQTT payload, now publishing both fahrenheit and celsius temperatures for homekit
                                     // BE CAREFUL of playload length limits!!
@@ -1663,9 +1604,9 @@ int main(int argc, char *argv[])
                                             addr, rssi_int, temperature_fahrenheit, \
                                             temperature_celsius, \
                                             humidity, battery_precentage_int, \
-                                            device_units_nice_name[mac_index], \
-                                            device_units_location[mac_index],
-                                            device_units_type[mac_index]
+                                            config.sensors[mac_index].nice_name, \
+                                            config.sensors[mac_index].location,
+                                            config.sensors[mac_index].type
                                        );
 
                                     if (payload_length >= MAXIMUM_JSON_MESSAGE) 
@@ -1682,7 +1623,7 @@ int main(int argc, char *argv[])
 
                                     topic_length = snprintf(topic_buffer, topic_buffer_size,
                                        "%s%s",
-                                       topic_base, addr);
+                                       config.mqtt_base_topic, addr);
 
                                     // publish the message and wait for success
                                     pubmsg.payload = payload_buffer;
@@ -1703,7 +1644,7 @@ int main(int argc, char *argv[])
                         // end device type 6
 
                         // device type 99 = decoding
-                        if ( device_units_type[mac_index] == 99 )
+                        if ( config.sensors[mac_index].type == 99 )
                         {
                             //get the time that we received the scan response packet
                             time( &rawtime );
@@ -1730,7 +1671,7 @@ int main(int argc, char *argv[])
                                 {
                                     fprintf(stdout, "=========\n");
                                     fprintf(stdout, "Current local time and date: %s", asctime (time_packet_received) );
-                                    fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, device_units_location[mac_index], device_units_type[mac_index]);
+                                    fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, config.sensors[mac_index].location, config.sensors[mac_index].type);
                                     fprintf(stdout, "advertising_packet_type = %03d\n", advertising_packet_type);
                                     // print whole packet
                                     printf("==>0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 4 4 5 5 5 5 5 5 5 5 5 5 6 \n");
@@ -1747,7 +1688,7 @@ int main(int argc, char *argv[])
 
 //                                 fprintf(stdout, "=========\n");
 //                                 fprintf(stdout, "Current local time and date: %s", asctime (time_packet_received) );
-//                                 fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, device_units_location[mac_index], device_units_type[mac_index]);
+//                                 fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, config.sensors[mac_index].location, config.sensors[mac_index].type);
 // 
 //                                 fprintf(stdout, "advertising_packet_type = %03d\n", advertising_packet_type);
                             }
@@ -1766,7 +1707,7 @@ int main(int argc, char *argv[])
 
                                 fprintf(stdout, "=========\n");
                                 fprintf(stdout, "Current local time and date: %s", asctime (time_packet_received) );
-                                fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, device_units_location[mac_index], device_units_type[mac_index]);
+                                fprintf(stdout, "mac address =  %s  location = %s device type = %d ", addr, config.sensors[mac_index].location, config.sensors[mac_index].type);
                                 fprintf(stdout, "advertising_packet_type = %03d\n", advertising_packet_type);
                                 // print whole packet
                                 printf("==>0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 4 4 5 5 5 5 5 5 5 5 5 5 6 \n");
@@ -1822,5 +1763,270 @@ int main(int argc, char *argv[])
     MQTTClient_destroy(&client);
 
     exit(0);
+}
+
+
+unsigned int
+parser( config_t* config, char** argv )
+{
+    /* Open file & declare libyaml types */
+    FILE* fp = fopen( argv[1], "r" );
+
+    if(fp == NULL)
+    {
+       fprintf(stdout, "ERROR: Failed to open config file: %s\n", argv[1]);
+       exit(EXIT_FAILURE);
+    }
+
+    yaml_parser_t parser;
+    yaml_event_t event;
+
+    bool seq_status = 0;      /* IN or OUT of sequence index, init to OUT */
+    unsigned int map_seq = 0; /* Index of mapping inside sequence */
+
+    init_prs( fp, &parser );  /* Initiliaze parser & open file */
+
+    do {
+        parse_next( &parser, &event ); /* Parse new event */
+
+        /* Decide what to do with each event */
+        event_switch( &seq_status, &map_seq, config, &parser, &event, fp );
+
+        if ( event.type != YAML_STREAM_END_EVENT ) {
+            yaml_event_delete( &event );
+        }
+
+        if ( map_seq > MAX_SENSORS ) {
+            break;
+        }
+    
+    } while ( event.type != YAML_STREAM_END_EVENT );
+
+    clean_prs( fp, &parser, &event ); /* clean parser & close file */
+
+
+    return map_seq;
+}
+
+void
+event_switch( bool* seq_status, unsigned int* map_seq, config_t* config,
+              yaml_parser_t* parser, yaml_event_t* event, FILE* fp )
+{
+    switch ( event->type ) {
+        case YAML_STREAM_START_EVENT:
+            break;
+        case YAML_STREAM_END_EVENT:
+            break;
+        case YAML_DOCUMENT_START_EVENT:
+            break;
+        case YAML_DOCUMENT_END_EVENT:
+            break;
+        case YAML_SEQUENCE_START_EVENT:
+            ( *seq_status ) = true;
+            break;
+        case YAML_SEQUENCE_END_EVENT:
+            ( *seq_status ) = false;
+            break;
+        case YAML_MAPPING_START_EVENT:
+            if ( *seq_status == 1 ) {
+                ( *map_seq )++;
+            }
+            break;
+        case YAML_MAPPING_END_EVENT:
+            break;
+        case YAML_ALIAS_EVENT:
+            printf( " ERROR: Got alias (anchor %s)\n",
+                    event->data.alias.anchor );
+            exit( EXIT_FAILURE );
+            break;
+        case YAML_SCALAR_EVENT:
+            to_data( seq_status, map_seq, config, parser, event, fp );
+            break;
+        case YAML_NO_EVENT:
+            puts( " ERROR: No event!" );
+            exit( EXIT_FAILURE );
+            break;
+    }
+}
+
+void
+to_data( bool* seq_status, unsigned int* map_seq, config_t* config,
+         yaml_parser_t* parser, yaml_event_t* event, FILE* fp )
+{
+    char* buf = (char*)event->data.scalar.value;
+
+    /* Dictionary */
+    char* mqtt_server_url = "mqtt_server_url";
+    char* mqtt_base_topic = "mqtt_base_topic";
+    char* mqtt_username = "mqtt_username";
+    char* mqtt_password = "mqtt_password";
+    char* bluetooth_adapter = "bluetooth_adapter";
+    char* scan_type = "scan_type";
+    char* scan_window = "scan_window";
+    char* scan_interval = "scan_interval";
+    char* publish_type = "publish_type";
+    char* auto_configure = "auto_configure";
+    char* syslog_address = "syslog_address";
+    char* logging_level = "logging_level";
+    char* sensors = "sensors";
+
+    if ( !strcmp( buf, mqtt_server_url ) ) {
+        yaml_event_delete( event ); 
+        parse_next( parser, event );
+        strcpy(config->mqtt_server_url, (char*)event->data.scalar.value );
+    } else if ( !strcmp( buf, mqtt_base_topic ) ) {
+        yaml_event_delete( event ); 
+        parse_next( parser, event );
+        strcpy(config->mqtt_base_topic, (char*)event->data.scalar.value);
+    } else if ( !strcmp( buf, mqtt_username ) ) {
+        yaml_event_delete( event ); 
+        parse_next( parser, event );
+        strcpy(config->mqtt_username, (char*)event->data.scalar.value);
+    } else if ( !strcmp( buf, mqtt_password ) ) {
+        yaml_event_delete( event ); 
+        parse_next( parser, event );
+        strcpy(config->mqtt_password, (char*)event->data.scalar.value);
+    } else if ( !strcmp( buf, bluetooth_adapter ) ) {
+        yaml_event_delete( event ); 
+        parse_next( parser, event );
+        config->bluetooth_adapter = strtol( (char*)event->data.scalar.value, NULL, 10 );
+    } else if ( !strcmp( buf, scan_type ) ) {
+        yaml_event_delete( event ); 
+        parse_next( parser, event );
+        config->scan_type = strtol( (char*)event->data.scalar.value, NULL, 10 );
+    } else if ( !strcmp( buf, scan_window ) ) {
+        yaml_event_delete( event ); 
+        parse_next( parser, event );
+        config->scan_window = strtol( (char*)event->data.scalar.value, NULL, 10 );
+    } else if ( !strcmp( buf, scan_interval ) ) {
+        yaml_event_delete( event ); 
+        parse_next( parser, event );
+        config->scan_interval = strtol( (char*)event->data.scalar.value, NULL, 10 );
+    } else if ( !strcmp( buf, publish_type ) ) {
+        yaml_event_delete( event ); 
+        parse_next( parser, event );
+        config->publish_type = strtol( (char*)event->data.scalar.value, NULL, 10 );
+    } else if ( !strcmp( buf, auto_configure ) ) {
+        yaml_event_delete( event ); 
+        parse_next( parser, event );
+        config->auto_configure = strtol( (char*)event->data.scalar.value, NULL, 10 );
+    } else if ( !strcmp( buf, syslog_address ) ) {
+        yaml_event_delete( event ); 
+        parse_next( parser, event );
+        strcpy(config->syslog_address, (char*)event->data.scalar.value);
+    } else if ( !strcmp( buf, logging_level ) ) {
+        yaml_event_delete( event ); 
+        parse_next( parser, event );
+        config->logging_level = strtol( (char*)event->data.scalar.value, NULL, 10 );
+    } else if ( ( *seq_status ) == true ) {
+        /* Data from sequence of sensors */
+        to_data_from_map( buf, map_seq, config, parser, event, fp );
+    } else if ( !strcmp( buf, sensors ) ) {
+        /* Do nothing, "sensors" is just the label of mapping's sequence */
+    } else {
+        printf( "\n -ERROR: Unknow variable in config file: %s\n", buf );
+        clean_prs( fp, parser, event ); 
+        exit( EXIT_FAILURE );
+    }
+}
+
+void
+to_data_from_map( char* buf, unsigned int* map_seq, config_t* config,
+                  yaml_parser_t* parser, yaml_event_t* event, FILE* fp )
+{
+    /* Dictionary */
+    char* name = "name";
+    char* type = "type";
+    char* mac = "mac";
+    char* location = "location";
+
+
+    if ( !strcmp( buf, name ) ) {
+        yaml_event_delete( event ); 
+        parse_next( parser, event );
+        strcpy(config->sensors[( *map_seq ) - 1].nice_name,
+            (char*)event->data.scalar.value);
+    } else if ( !strcmp( buf, type ) ) {
+        yaml_event_delete( event ); 
+        parse_next( parser, event );
+        config->sensors[( *map_seq ) - 1].type =
+            strtol( (char*)event->data.scalar.value, NULL, 10 );
+    } else if ( !strcmp( buf, mac ) ) {
+        yaml_event_delete( event ); 
+        parse_next( parser, event );
+        config->sensors[( *map_seq ) - 1].readings_per_hour=0;
+        strcpy(config->sensors[( *map_seq ) - 1].mac,
+            (char*)event->data.scalar.value);
+    } else if ( !strcmp( buf, location ) ) {
+        yaml_event_delete( event ); 
+        parse_next( parser, event );
+        strcpy(config->sensors[( *map_seq ) - 1].location,
+            (char*)event->data.scalar.value);
+    } else {
+        printf( "\n -ERROR: Unknow variable in config file: %s\n", buf );
+        clean_prs( fp, parser, event ); 
+        exit( EXIT_FAILURE );
+    }
+}
+
+void
+parse_next( yaml_parser_t* parser, yaml_event_t* event )
+{
+    /* Parse next scalar. if wrong exit with error */
+    if ( !yaml_parser_parse( parser, event ) ) {
+        printf( "Parser error %d\n", parser->error );
+        exit( EXIT_FAILURE );
+    }
+}
+
+void
+init_prs( FILE* fp, yaml_parser_t* parser )
+{
+    /* Parser initilization */
+    if ( !yaml_parser_initialize( parser ) ) {
+        fputs( "Failed to initialize parser!\n", stderr );
+    }
+
+    if ( fp == NULL ) {
+        fputs( "Failed to open file!\n", stderr );
+    }
+
+    yaml_parser_set_input_file( parser, fp ); 
+}
+
+void
+clean_prs( FILE* fp, yaml_parser_t* parser, yaml_event_t* event )
+{
+    yaml_event_delete( event );   /* Delete event */
+    yaml_parser_delete( parser ); /* Delete parser */
+    fclose( fp );                 /* Close file */
+}
+
+void
+print_data( unsigned int sensor_count, config_t* config )
+{
+    puts( "\n --- data structure after parsing ---" );
+    printf( " mqtt_server_url = %s\n", config->mqtt_server_url );
+    printf( " mqtt_base_topic = %s\n", config->mqtt_base_topic );
+    printf( " mqtt_username = %s\n", config->mqtt_username );
+    printf( " mqtt_password = %s\n", config->mqtt_password );
+    printf( " bluetooth_adapter = %i\n", config->bluetooth_adapter );
+    printf( " scan_type = %i\n", config->scan_type );
+    printf( " scan_window = %i\n", config->scan_window );
+    printf( " scan_interval = %i\n", config->scan_interval );
+    printf( " publish_type = %i\n", config->publish_type );
+    printf( " auto_configure = %i\n", config->auto_configure );
+    printf( " syslog_address = %s\n", config->syslog_address );
+    printf( " logging_level = %i\n", config->logging_level );
+
+    puts( " sensor configs:" );
+    puts( "\t -----------------" );
+    for ( int i = 0; i < (int)sensor_count; i++ ) {
+        printf( "\t name = %s\n", config->sensors[i].nice_name );
+        printf( "\t location = %s\n", config->sensors[i].location );
+        printf( "\t type = %i\n", config->sensors[i].type );
+        printf( "\t mac = %s\n", config->sensors[i].mac );
+        puts( "\t -----------------" );
+    }
 }
 
