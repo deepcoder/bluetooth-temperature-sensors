@@ -1,0 +1,113 @@
+# config.yaml file for configuring blue tooth sensors
+
+# MQTT server URL with port number
+mqtt_server_url: "tcp://172.148.5.11:1883"
+
+# MQTT base topic with a trailing slash
+# for HA autoconfig to work this should be either "homeassistant/sensor/" or "homeassistant/sensor/[something]/"
+mqtt_base_topic: "homeassistant/sensor/ble-temp/"
+
+# set to empty if not used
+mqtt_username: "mosquitto"
+mqtt_password: "mosquitto_pass"
+
+# bluetooth adapter = integer number of bluetooth devices, run hciconfig to see your adapters, 1st adapter is referenced as 0 in this program
+bluetooth_adapter: 0
+
+# scan type = 0 for passive, 1 for active advertising scan, some BLE sensors only share data on type 4 response active advertising packets
+scan_type: 1
+
+# integer number that is multiplied by 0.625 to set advertising scanning window in milliseconds. Try 100 to start.
+scan_window: 100
+
+# integer number that is multiplied by 0.625 to set advertising scanning interval in milliseconds. Try 1000 to start.
+scan_interval: 1000
+
+# 0 to publish via legecy style (by MAC directly into base), 1 to publish new style (by unique id into 'state').  Must be 1 for auto_configure to work.
+publish_type: 1
+
+# create HomeAssistant autoconfiguration entries, 1 to enable, 0 to disable
+auto_configure: 1
+
+# Create Sesnor for hourly statistics in Home Assitant if auto_confiutgure is enabled, 1 to enable, 0 to disable
+auto_conf_stats: 1
+
+# Create temp sensor in C in Home Assitant if auto_confiutgure is enabled, 1 to enable, 0 to disable
+# Note that HA will convert this to F if your settings are for F
+#   will be created as [name]-T
+auto_conf_tempc: 1
+
+# Create temp sensor in F in Home Assitant if auto_confiutgure is enabled, 1 to enable, 0 to disable
+#   will be created as [name]-F
+auto_conf_tempf: 1
+
+# Create hummity sensor in Home Assitant if auto_confiutgure is enabled, 1 to enable, 0 to disable
+#   will be created as [name]-H
+auto_conf_hum: 1
+
+# Create battery percentage sensors in Home Assitant if auto_confiutgure is enabled, 1 to enable, 0 to disable
+#   will be created as [name]-B
+auto_conf_battery: 1
+
+# Create battery voltage sensors in Home Assitant if auto_confiutgure is enabled, 1 to enable, 0 to disable
+#   will be created as [name]-V
+auto_conf_voltage: 1
+
+# Create signal strength sensors in Home Assitant if auto_confiutgure is enabled, 1 to enable, 0 to disable
+#   will be created as [name]-S
+auto_conf_signal: 1
+
+# not implemented yet
+syslog_address: "192.168.88.2"
+
+# set log level
+# 0 = LOG_EMERG - system is unusable
+# 1 = LOG_ALERT - action must be taken immediately
+# 2 = LOG_CRIT - critical conditions
+# 3 = LOG_ERR - error conditions
+# 4 = LOG_WARNING - warning conditions
+# 5 = LOG_NOTICE - normal but significant condition
+# 6 = LOG_INFO - informational
+# 7 = LOG_DEBUG - debug-level messages
+
+logging_level: "7"
+
+#### config for each sensor
+
+# Name: when auto configure is used thie will be the Name of the device, the root of the Friendly Name, as well as the basis HA uses for creating the entity name
+# Unique: name used for topic publishing and used as unique ID for HA auto config - no spaces or odd characters allowed
+# Location: used with HA auto config to auto assign sensors to a specific area
+# Types:
+#   1 = Xiaomi LYWSD03MMC-ATC   https://github.com/atc1441/ATC_MiThermometer
+#   2 = Govee H5052 (type 4 advertising packets)
+#   3 = Govee H5072
+#   4 = Govee H5102
+#   5 = Govee H5075
+#   6 = Govee H5074 (type 4 advertising packets)
+#  99 = Display raw type 0 and type 4 advertising packets for this BLE MAC address
+# MAC: the MAC address of the sensor
+
+sensors:
+  - name: "Living Room Temp/Hum"
+    unique: "th_living_room"
+    location: "Living Room"
+    type: 1
+    mac: "DD:C1:38:70:0C:24"
+
+  - name: "Shared Bathroom Temp/Hum"
+    unique: "th_bathroom"
+    Location: "Shared Bathroom"
+    type: 3
+    mac: "DD:C1:38:AC:77:44"
+
+  - name: "Attic Temp/Hum"
+    unique: "th_attic"
+    location: "Attic"
+    type: 3
+    mac: "DD:12:1D:22:80:77"
+
+  - name: "LYWSD03MMC test"
+    unique: "th_test"
+    location: "Garage"
+    type: 99
+    mac: "DD:C1:38:AC:28:A2"

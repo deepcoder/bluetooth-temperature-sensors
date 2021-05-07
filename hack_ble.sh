@@ -13,7 +13,7 @@ do
     date '+%Y%m%d%H%M%S'
 	echo "Press [CTRL+C] to stop.."
     cd /home/pi/atc-govee
-	/home/pi/atc-govee/ble_sensor_mqtt_pub 0 1 200 500
+	/home/pi/atc-govee/ble_sensor_mqtt_pub /home/pi/atc-govee/ble_sensor_mqtt_pub.yaml
 done
 
 
