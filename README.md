@@ -3,7 +3,7 @@ Read Bluetooth Advertising Packets from BLE temperature sensors and publish data
 
 This program decodes the bluetooth advertising packets for the following BLE temperature and humidity sensors:
 ```
-//  1 = Xiaomi LYWSD03MMC-ATC   https://github.com/atc1441/ATC_MiThermometer & https://github.com/pvvx/ATC_MiThermometer
+//  1 = Xiaomi LYWSD03MMC-ATC   https://github.com/atc1441/ATC_MiThermometer or https://github.com/pvvx/ATC_MiThermometer
 //  2 = Govee H5052 (type 4 advertising packets)
 //  3 = Govee H5072
 //  4 = Govee H5102
@@ -11,6 +11,8 @@ This program decodes the bluetooth advertising packets for the following BLE tem
 //  6 = Govee H5074 (type 4 advertising packets)
 // 99 = Display raw type 0 and type 4 advertising packets for this BLE MAC address
 ```
+When using the LYWSD03MMC you need to flash one of the custom firmwares above.  Both the atc1441 and pvvx custom formats are supported.  With pvvx custom you get more resolution for humidity.
+
 The program uses the bluetooth and mqtt client libraries, steps to image Raspberry Pi and install necessary libraries to compile program are show at bottom of this readme.
 
 Presuming reasonably modern systemd based linux system you can build and run like this:

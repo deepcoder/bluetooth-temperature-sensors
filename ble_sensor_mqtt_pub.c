@@ -16,7 +16,7 @@
 //  Intel Edison Playground
 //  Copyright (c) 2015 Damian Kołakowski. All rights reserved.
 //
-// YAML config parsing based on: 
+// YAML config parsing based on:
 // https://github.com/smavros/yaml-to-struct
 //
 
@@ -1248,32 +1248,72 @@ int main(int argc, char *argv[])
 
                                 // length of packet and subpacket
 
-                                // printf("full packet length      = %3d %02X\n", bluetooth_adv_packet_length, bluetooth_adv_packet_length);
-                                // printf("sub packet length       = %3d %02X\n", adv_info->length, adv_info->length);
+                                //printf("full packet length      = %3d %02X\n", bluetooth_adv_packet_length, bluetooth_adv_packet_length);
+                                //printf("sub packet length       = %3d %02X\n", adv_info->length, adv_info->length);
 
                                 ad_length = (unsigned int)adv_info->data[0];
-                                // printf("ADV_IND AD Data Length  = %3d %02X\n", ad_length, ad_length);
+                                //printf("ADV_IND AD Data Length  = %3d %02X\n", ad_length, ad_length);
                                 ad_type = (unsigned int)adv_info->data[1];
-                                // printf("ADV_IND AD Type         = %3d %02X\n", ad_type, ad_type);
+                                //printf("ADV_IND AD Type         = %3d %02X\n", ad_type, ad_type);
 
-                                int16_t temperature_int = (adv_info->data[10] << 8) | adv_info->data[11];
-                                double temperature_celsius = (double)temperature_int / 10.0;
+                                int16_t temperature_int;
+                                double temperature_celsius;
+                                double temperature_fahrenheit;
+                                int16_t humidity_int;
+                                double humidity;
+                                uint8_t battery_pct_int;
+                                uint16_t battery_mv_int;
+                                uint8_t frame_int;
 
-                                double temperature_fahrenheit = temperature_celsius * 9.0 / 5.0 + 32.0;
+                                // check for pvvx firmware custom format
+                                if (bluetooth_adv_packet_length == 34)
+                                {
+                                    if (logging_level == LOG_DEBUG)
+                                    {
+                                        fprintf(stdout, "Parsing as PVVX Firmware\n");
+                                    }
 
-                                uint8_t humidity_int = adv_info->data[12];
+                                    temperature_int = (adv_info->data[10]) | (adv_info->data[11] << 8);
+                                    temperature_celsius = (double)temperature_int / 100.0;
 
-                                uint8_t battery_pct_int = adv_info->data[13];
+                                    temperature_fahrenheit = temperature_celsius * 9.0 / 5.0 + 32.0;
 
-                                uint16_t battery_mv_int = (adv_info->data[14] << 8) | adv_info->data[15];
+                                    humidity_int = (adv_info->data[12]) | (adv_info->data[13] << 8);
+                                    humidity = (double)humidity_int / 100.0;
 
-                                uint8_t frame_int = adv_info->data[16];
+                                    battery_pct_int = adv_info->data[16];
+
+                                    battery_mv_int = (adv_info->data[14]) | (adv_info->data[15] << 8);
+
+                                    frame_int = adv_info->data[17];
+                                }
+                                else
+                                {
+                                    if (logging_level == LOG_DEBUG)
+                                    {
+                                        fprintf(stdout, "Parsing as ATC Firmware\n");
+                                    }
+
+                                    temperature_int = (adv_info->data[10] << 8) | adv_info->data[11];
+                                    temperature_celsius = (double)temperature_int / 10.0;
+
+                                    temperature_fahrenheit = temperature_celsius * 9.0 / 5.0 + 32.0;
+
+                                    humidity_int = adv_info->data[12];
+                                    humidity = (double)humidity_int;
+
+                                    battery_pct_int = adv_info->data[13];
+
+                                    battery_mv_int = (adv_info->data[14] << 8) | adv_info->data[15];
+
+                                    frame_int = adv_info->data[16];
+                                }
 
                                 if (logging_level == LOG_DEBUG)
                                 {
                                     fprintf(stdout, "temp c       =  %.1f\n", temperature_celsius);
                                     fprintf(stdout, "temp f       =  %.1f\n", temperature_fahrenheit);
-                                    fprintf(stdout, "humidity pct = %3d\n", humidity_int);
+                                    fprintf(stdout, "humidity pct =  %.1f\n", humidity);
                                     fprintf(stdout, "battery pct  = %3d\n", battery_pct_int);
                                     fprintf(stdout, "battery mv   =  %4d\n", battery_mv_int);
                                     fprintf(stdout, "frame        =   %3d\n", frame_int);
@@ -1285,11 +1325,11 @@ int main(int argc, char *argv[])
                                 if (config.publish_type == 1)
                                 {
                                     payload_length = snprintf(payload_buffer, MAXIMUM_JSON_MESSAGE,
-                                                              "{\"timestamp\":\"%04d%02d%02d%02d%02d%02d\",\"mac\":\"%s\",\"rssi\":%d,\"tempf\":%#.1F,\"units\":\"F\",\"tempc\":%#.1F,\"humidity\":%i,\"batterypct\":%i,\"batterymv\":%i,\"frame\":%i,\"name\":\"%s\",\"location\":\"%s\",\"type\":\"%d\"}",
+                                                              "{\"timestamp\":\"%04d%02d%02d%02d%02d%02d\",\"mac\":\"%s\",\"rssi\":%d,\"tempf\":%#.1F,\"units\":\"F\",\"tempc\":%#.1F,\"humidity\":%#.1F,\"batterypct\":%i,\"batterymv\":%i,\"frame\":%i,\"name\":\"%s\",\"location\":\"%s\",\"type\":\"%d\"}",
                                                               tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec,
                                                               addr, rssi_int, temperature_fahrenheit,
                                                               temperature_celsius,
-                                                              humidity_int, battery_pct_int, battery_mv_int, frame_int,
+                                                              humidity, battery_pct_int, battery_mv_int, frame_int,
                                                               config.sensors[mac_index].name,
                                                               config.sensors[mac_index].location,
                                                               config.sensors[mac_index].type);
@@ -1298,11 +1338,11 @@ int main(int argc, char *argv[])
                                 else
                                 {
                                     payload_length = snprintf(payload_buffer, MAXIMUM_JSON_MESSAGE,
-                                                              "{\"timestamp\":\"%04d%02d%02d%02d%02d%02d\",\"mac-address\":\"%s\",\"rssi\":%d,\"temperature\":%#.1F,\"units\":\"F\",\"temperature-celsius\":%#.1F,\"humidity\":%i,\"battery-pct\":%i,\"battery-mv\":%i,\"frame\":%i,\"sensor-name\":\"%s\",\"location\":\"%s\",\"sensor-type\":\"%d\"}",
+                                                              "{\"timestamp\":\"%04d%02d%02d%02d%02d%02d\",\"mac-address\":\"%s\",\"rssi\":%d,\"temperature\":%#.1F,\"units\":\"F\",\"temperature-celsius\":%#.1F,\"humidity\":%.0F,\"battery-pct\":%i,\"battery-mv\":%i,\"frame\":%i,\"sensor-name\":\"%s\",\"location\":\"%s\",\"sensor-type\":\"%d\"}",
                                                               tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec,
                                                               addr, rssi_int, temperature_fahrenheit,
                                                               temperature_celsius,
-                                                              humidity_int, battery_pct_int, battery_mv_int, frame_int,
+                                                              humidity, battery_pct_int, battery_mv_int, frame_int,
                                                               config.sensors[mac_index].name,
                                                               config.sensors[mac_index].location,
                                                               config.sensors[mac_index].type);
