@@ -1,5 +1,5 @@
 #!/bin/bash
-
+# 202202021651
 ########!/bin/sh -e
 #
 # rc.local
@@ -31,9 +31,18 @@ while [  $STATE == "error" ]; do
     sleep 2
 done
 
+# if this file exists then skip processing
+declare SKIP_PROCESSING="/home/pi/ble-sensors/skip.txt"
+
+if [ -f "$SKIP_PROCESSING" ]; then
+    echo "$SKIP_PROCESSING exists, not starting ble monitor."
+    exit 1
+fi
+
 su pi -c 'tmux new-session -d -s ble'
-su pi -c 'tmux send-keys sudo Space /home/pi/atc-govee/hack_ble.sh C-m'
+su pi -c 'tmux send-keys sudo Space /home/pi/ble-sensors/hack_ble.sh C-m'
 
 
 exit 0
+
 
