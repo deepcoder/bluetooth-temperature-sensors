@@ -1,0 +1,15 @@
+[Unit]
+Description=BLE Sensor MQTT service
+Documentation=https://github.com/deepcoder/bluetooth-temperature-sensors
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=10s
+TimeoutSec=3s
+ExecStart=/usr/bin/ble_sensor_mqtt_pub /etc/ble_sensor_mqtt_pub.yaml
+
+[Install]
+WantedBy=multi-user.target
