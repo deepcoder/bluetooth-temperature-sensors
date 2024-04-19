@@ -1855,7 +1855,7 @@ int main(int argc, char *argv[])
                                 int32_t answer;
                                 answer = (((int32_t)((int8_t)adv_info->data[sensor_data_start + 0])) << 16) + (((int32_t)adv_info->data[sensor_data_start + 1]) << 8) + adv_info->data[sensor_data_start + 2];
 
-                                // convert the integer * 100 value for temperature and humidity to degrees fahrenheit and celsius (for homekit) and humidity percentage
+                                // convert the values for temperature and humidity to degrees fahrenheit and celsius (for homekit) and humidity percentage
 
                                 double temperature_fahrenheit;
                                 double temperature_celsius;
