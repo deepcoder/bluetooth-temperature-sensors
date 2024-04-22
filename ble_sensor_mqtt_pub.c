@@ -1840,27 +1840,27 @@ int main(int argc, char *argv[])
 
                                 unsigned int sensor_data = adv_info->data[sensor_data_start + 2] | adv_info->data[sensor_data_start + 1] << 8 | msb << 16;
 
-                                signed int temperature_int = sensor_data / 10000;
+                                double temperature_double = sensor_data / 1000 / 10.0;
 
                                 // this crap code works for values below 0 degrees C but seems to bottomout about 12.2 degrees F, display shows values lower
                                 // but not very accurate. Manual says range is 14 degrees F to 140 degrees F
                                 // Humidity seems accurate thru range however
                                 if (below_32 == 1)
                                 {
-                                    temperature_int = temperature_int * -1;
+                                    temperature_double =  temperature_double * -1;
                                 }
 
-                                unsigned int humidity_int = (sensor_data % 1000) / 10;
+                                double humidity_int = (sensor_data % 1000) / 10.0;
 
                                 int32_t answer;
                                 answer = (((int32_t)((int8_t)adv_info->data[sensor_data_start + 0])) << 16) + (((int32_t)adv_info->data[sensor_data_start + 1]) << 8) + adv_info->data[sensor_data_start + 2];
 
-                                // convert the integer * 100 value for temperature and humidity to degrees fahrenheit and celsius (for homekit) and humidity percentage
+                                // convert the values for temperature and humidity to degrees fahrenheit and celsius (for homekit) and humidity percentage
 
                                 double temperature_fahrenheit;
                                 double temperature_celsius;
-                                temperature_fahrenheit = temperature_int * 9.0 / 5.0 + 32.0;
-                                temperature_celsius = temperature_int;
+                                temperature_fahrenheit = temperature_double * 9.0 / 5.0 + 32.0;
+                                temperature_celsius = temperature_double;
 
                                 double humidity = humidity_int;
                                 // get battery level percentage
